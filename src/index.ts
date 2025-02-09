@@ -1,4 +1,5 @@
 import { Context, Schema } from 'koishi'
+import { db } from './model'
 
 export const name = 'bili-untag'
 
@@ -10,5 +11,5 @@ export interface Config {
 export const Config: Schema<Config> = Schema.object({})
 
 export function apply(ctx: Context, config: Config) {
-  // write your plugin here
+  // ctx.inject(['database'], db)
 }

@@ -68,6 +68,111 @@ interface SearchRequest {
     page?: number                   // 页码
 }
 
+enum HitColumn {
+    title = 'title',                // 标题匹配
+    description = 'description',    // 简介匹配
+    author = 'author',              // UP主昵称匹配
+    tag = 'tag',                    // 标签匹配
+    org_title = 'org_title',        // 原标题匹配
+}
+
+interface Video {
+    type: 'video',                  // 稿件类型
+    id: number,                     // avid
+    author: string,                 // UP名
+    mid: string,                    // uid
+    typeid: string                  // 分区tid
+    typename: string,               // 分区名
+    arcurl: string,                 // 视频url
+    aid: number,                    // avid
+    bvid: string,                   // BV
+    title: string,                  // 视频标题
+    description: string,            // 描述
+    arcrank: number,                // ？
+    pic: string,                    // 封面url
+    play: number,                   // 播放数
+    video_review: number,           // 弹幕数
+    favorites: number,              // 收藏数
+    tag: string,                    // 标签数，`,`分隔
+    review: number,                 // 评论数
+    pubdate: number,                // 投稿时间戳
+    senddate: number,               // 发布时间戳
+    duration: string,               // 视频长度
+    badgepay: boolean,              // ？
+    hit_columns: Array<HitColumn>,  // 匹配字段
+    view_type: string,              // ？
+    is_pay: number,                 // ？付费视频
+    is_union_video: number,         // 是否联合投稿：0否/1是
+    rec_tags: any,                  // ？
+    new_rec_tags: Array<any>,       // ？
+    rank_score: number,             // 排序分
+    like: number,                   // 点赞数
+    upic: string,                   // UP主头像url
+    corner: string,                 // ？
+    cover: string,                  // ？
+    desc: string,                   // ？
+    url: string,                    // ？
+    rec_reason: string,             // ？
+    danmaku: number,                // 弹幕数
+    biz_data: any,                  // ？
+    is_charge_video: number,        // ？充电视频
+    vt: number,                     // ？
+    enable_vt: number,              // ？
+    vt_display: string,             // ？
+    subtitle: string,               // ？字幕
+    episode_count_text: string,     // ？
+    release_status: number,         // ？
+    is_intervene: number,           // ？
+    area: number,                   // ？
+    style: number,                  // ？
+    cate_name: string,              // ？
+    is_live_room_inline: number,    // ？
+    live_status: number,            // ？
+    live_time: string,              // ？
+    online: number,                 // ？
+    rank_index: number,             // ？当前？排序
+    rank_offset: number,            // ？全局？排序
+    roomid: number,                 // ？直播间
+    short_id: number,               // ？
+    spread_id: number,              // ？
+    tags: string,                   // ？
+    uface: string,                  // ？
+    uid: number,                    // ？
+    uname: string,                  // ？
+    user_cover: string,             // ？
+    parent_area_id: number,         // ？
+    parent_area_name: string,       // ？
+    watched_show: null              // ？
+}
+
+interface Media {
+    type: 'media_bangumi' | 'media_ft'
+}
+
+interface LiveRoom {
+    type: 'live_room'
+}
+
+interface LiveUser {
+    type: 'live_user'
+}
+
+interface Article {
+    type: 'article'
+}
+
+interface Topic {
+    type: 'topic'
+}
+
+interface BiliUser {
+    type: 'bili_user'
+}
+
+interface Photo {
+    type: 'photo'
+}
+
 enum ResponseCode {
     success = 0,        // 成功
     error = -400,       // 请求错误
@@ -75,9 +180,9 @@ enum ResponseCode {
     not_found = -1200,  // 搜索目标类型不存在
 }
 
-class SearchResponse { }
+interface SearchResponse { }
 
-class TypeSearchResponse {
+interface TypeSearchResponse {
     seid: number            // 搜索seid
     page: number            // 当前页码
     pagesize: number        // 每页条数	固定20
@@ -89,11 +194,11 @@ class TypeSearchResponse {
     exp_list: Object        // 
     egg_hit: number         // 0
     pageinfo: Object        // 副分页信息	只在搜索类型为直播间及主播有效
-    result: Array<Object>   // 结果列表
+    result: Array<Video | Media | LiveRoom | LiveUser | Article | Topic | BiliUser | Photo> // 结果列表
     show_column: number     // 0
 }
 
-class JsonResponse {
+interface JsonResponse {
     code: ResponseCode
     message: string
     ttl: number

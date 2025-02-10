@@ -1,6 +1,5 @@
 import md5 from 'md5'
-import { userAgent } from './const'
-
+import { userAgent } from '../const'
 
 const mixinKeyEncTab: number[] = [
     46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35,
@@ -54,7 +53,7 @@ async function getWbiKeys(session: string, force: boolean): Promise<string> {
 }
 
 // 为请求参数进行 wbi 签名
-export async function encWbi(params: Object, force = false, session?: string): Promise<string> {
+async function encWbi(params: Object, force = false, session?: string): Promise<string> {
     const mixin_key: string = await getWbiKeys(session, force)
     // 添加 wts 字段
     Object.assign(params, { wts: Math.round(Date.now() / 1000) })
@@ -73,4 +72,46 @@ export async function encWbi(params: Object, force = false, session?: string): P
     const wbi_sign = md5(query + mixin_key)
 
     return query + '&w_rid=' + wbi_sign
+}
+
+export enum ResponseCode {
+    success = 0,// 成功
+    error = -400,// 请求错误
+    forbid = -412,// 请求被拦截
+    not_found = -1200
+}
+
+export interface JsonResponse<T> {
+    code: ResponseCode
+    message: string
+    ttl: number
+    data: T
+}
+
+export async function tryWbi<T>(url: string, param: Object, session?: string): Promise<T> {
+    let query = await encWbi(param, false, session)
+    const headers = {
+        // SESSDATA 字段
+        Cookie: 'SESSDATA=' + session,
+        'User-Agent': userAgent,
+        Referer: 'https://www.bilibili.com/' //对于直接浏览器调用可能不适用
+    }
+    let res = await fetch(url + '?' + query, { headers })
+    let json_res: JsonResponse<T> = await res.json()
+    switch (json_res.code) {
+        case ResponseCode.success:
+            return json_res.data
+        case ResponseCode.forbid:
+            break
+        case ResponseCode.error:
+        case ResponseCode.not_found:
+            throw json_res.message
+    }
+    query = await encWbi(param, true, session)
+    res = await fetch(url + '?' + query, { headers })
+    json_res = await res.json()
+    if (json_res.code !== ResponseCode.success) {
+        throw json_res.message
+    }
+    return json_res.data
 }

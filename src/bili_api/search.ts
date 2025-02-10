@@ -1,5 +1,4 @@
-import { userAgent } from "./const"
-import { encWbi } from "./util"
+import { tryWbi } from "./util"
 
 enum SearchType {
     video = 'video',                    // 视频
@@ -173,16 +172,9 @@ interface Photo {
     type: 'photo'
 }
 
-enum ResponseCode {
-    success = 0,        // 成功
-    error = -400,       // 请求错误
-    forbid = -412,      // 请求被拦截
-    not_found = -1200,  // 搜索目标类型不存在
-}
+export interface SearchResponse { }
 
-interface SearchResponse { }
-
-interface TypeSearchResponse {
+export interface TypeSearchResponse {
     seid: number            // 搜索seid
     page: number            // 当前页码
     pagesize: number        // 每页条数	固定20
@@ -198,49 +190,20 @@ interface TypeSearchResponse {
     show_column: number     // 0
 }
 
-interface JsonResponse {
-    code: ResponseCode
-    message: string
-    ttl: number
-    data: SearchResponse | TypeSearchResponse
-}
-
 const typeSearchUrl = 'https://api.bilibili.com/x/web-interface/search/type'
 
 const searchUrl = 'https://api.bilibili.com/x/web-interface/search/all/v2'
 
-export async function doTypeSearch(keyword: string, session?: string): Promise<any> {
+export async function doTypeSearch(keyword: string, session?: string): Promise<string> {
     let param: SearchRequest = {
         search_type: SearchType.video,
         keyword,
     }
-    const res = await tryWbi(typeSearchUrl, param, session) as TypeSearchResponse
+    const res: TypeSearchResponse = await tryWbi(typeSearchUrl, param, session)
+    let msg = res.result.filter(r => r.type === 'video').map(v => {
+        const pubdate = new Date(v.pubdate * 1000)
+        return v.title + ' | UP：' + v.author + '\n' + v.bvid + ' ' + v.aid + ' ' + pubdate.toLocaleDateString()
+    }).join('\n\n')
+    return msg
 }
 
-async function tryWbi(url: string, param: Object, session?: string): Promise<SearchResponse | TypeSearchResponse> {
-    let query = await encWbi(param, false, session)
-    const headers = {
-        // SESSDATA 字段
-        Cookie: 'SESSDATA=' + session,
-        'User-Agent': userAgent,
-        Referer: 'https://www.bilibili.com/' //对于直接浏览器调用可能不适用
-    }
-    let res = await fetch(url + '?' + query, { headers })
-    let json_res: JsonResponse = await res.json()
-    switch (json_res.code) {
-        case ResponseCode.success:
-            return json_res.data
-        case ResponseCode.forbid:
-            break
-        case ResponseCode.error:
-        case ResponseCode.not_found:
-            throw json_res.message
-    }
-    query = await encWbi(param, true, session)
-    res = await fetch(url + '?' + query, { headers })
-    json_res = await res.json()
-    if (json_res.code !== ResponseCode.success) {
-        throw json_res.message
-    }
-    return json_res.data
-}

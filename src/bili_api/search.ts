@@ -1,3 +1,4 @@
+import { h } from "koishi"
 import { tryWbi } from "./util"
 
 enum SearchType {
@@ -190,6 +191,16 @@ export interface TypeSearchResponse {
     show_column: number     // 0
 }
 
+function sortVideo(a: Video, b: Video): number {
+    if (a.pubdate !== b.pubdate) {
+        return b.pubdate - a.pubdate
+    }
+    if (a.senddate !== b.senddate) {
+        return b.senddate - a.senddate
+    }
+    return b.rank_score - a.rank_score
+}
+
 const typeSearchUrl = 'https://api.bilibili.com/x/web-interface/search/type'
 
 const searchUrl = 'https://api.bilibili.com/x/web-interface/search/all/v2'
@@ -200,10 +211,15 @@ export async function doTypeSearch(keyword: string, session?: string): Promise<s
         keyword,
     }
     const res: TypeSearchResponse = await tryWbi(typeSearchUrl, param, session)
-    let msg = res.result.filter(r => r.type === 'video').map(v => {
-        const pubdate = new Date(v.pubdate * 1000)
-        return v.title + ' | UP：' + v.author + '\n' + v.bvid + ' ' + v.aid + ' ' + pubdate.toLocaleDateString()
-    }).join('\n\n')
+    let msg = res.result
+        .filter(r => r.type === 'video')
+        .sort(sortVideo)
+        .map(v => {
+            const pubdate = new Date(v.pubdate * 1000)
+            return h('img', { src: 'http:' + v.pic }) + '\n' +
+                v.title + ' | ' + pubdate.toLocaleString('zh-CN') + ' | UP：' + v.author + '\n' +
+                v.bvid + ' | av' + v.aid
+        }).join('\n\n')
     return msg
 }
 

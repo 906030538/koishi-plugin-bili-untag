@@ -1,3 +1,4 @@
+import { h } from "koishi"
 import { tryWbi } from "./util"
 
 const rcmdUrl = 'https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd'
@@ -66,12 +67,21 @@ interface Data {
     user_feature: null,
 }
 
-export async function getFeed(session?: string): Promise<string> {
-    let param: RcmdRequest = {}
+export async function getFeed(session?: string, keyword?: string): Promise<string> {
+    let param: RcmdRequest = {
+        ps: 12,
+    }
     const res: Data = await tryWbi(rcmdUrl, param, session)
-    let msg = res.item.filter(i => i.goto === 'av' && i.show_info === 1).map(v => {
-        const pubdate = new Date(v.pubdate * 1000)
-        return v.title + ' | UP：' + v.owner.name + '\n' + v.bvid + ' ' + v.id + ' ' + pubdate.toLocaleDateString()
-    }).join('\n\n')
-    return msg
+    let msg = res.item
+        .filter(i => i.goto === 'av' && i.show_info === 1)
+        .filter(v => !keyword || v.title.includes(keyword))
+        .sort((a, b) => b.pubdate - a.pubdate)
+        .map(v => {
+            const pubdate = new Date(v.pubdate * 1000)
+            return h('img', { src: v.pic_4_3 }) + '\n' +
+                v.title + ' | ' + pubdate.toLocaleString('zh-CN') + ' | UP：' + v.owner.name + '\n' +
+                v.bvid + ' | av' + v.id
+        }).join('\n\n')
+    if (msg) return msg
+    return '没有任何推荐'
 }

@@ -1,4 +1,5 @@
 import { Context } from 'koishi'
+import { Video as SearchVideo } from './bili_api/search'
 
 declare module 'koishi' {
     interface Tables {
@@ -23,6 +24,7 @@ export interface Video {
     author: number              // Up主uid
     pubdate: number | Date,     // 投稿时间戳
     senddate: number | Date,    // 发布时间戳
+    area: number,               // 分区id
     title: string,              // 标题
     description: string,        // 简介
     tag: Array<string>,         // 标签
@@ -38,6 +40,41 @@ export interface Video {
     dislike: number,            // 0 点踩数
     now_rank: number,           // 当前排名
     his_rank: number,           // 历史最高排行
+}
+
+export function from_search(that: SearchVideo): [Video, User] {
+    let d = that.duration.split(':', 2).map(parseInt)
+    let duration = d.length === 2 ? d[0] * 60 + d[1] : d[0] ?? 0
+    const v: Video = {
+        id: that.aid,
+        bvid: that.bvid,
+        author: that.mid,
+        area: parseInt(that.typeid),
+        pubdate: that.pubdate,
+        senddate: that.senddate,
+        title: that.title, // 去除html
+        description: that.description, // 去除html
+        tag: that.tag.split(','),
+        pic: 'http:' + that.pic,
+        duration,
+        view: that.play,
+        like: that.like,
+        coin: -1,
+        favorite: that.favorites,
+        reply: that.review,
+        danmaku: that.video_review,
+        share: -1,
+        dislike: -1,
+        now_rank: that.rank_index,
+        his_rank: -1,
+    }
+    const u: User = {
+        id: that.mid,
+        time: new Date(),
+        name: that.author,
+        face: that.upic,
+    }
+    return [v, u]
 }
 
 export interface Subscribe {
@@ -82,6 +119,7 @@ export function db(ctx: Context) {
         author: 'unsigned',
         pubdate: 'timestamp',
         senddate: 'timestamp',
+        area: 'integer',
 
         title: 'string',
         description: 'text',

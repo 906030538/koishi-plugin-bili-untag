@@ -77,11 +77,11 @@ enum HitColumn {
     org_title = 'org_title',        // 原标题匹配
 }
 
-interface Video {
+export interface Video {
     type: 'video',                  // 稿件类型
     id: number,                     // avid
     author: string,                 // UP名
-    mid: string,                    // uid
+    mid: number,                    // uid
     typeid: string                  // 分区tid
     typename: string,               // 分区名
     arcurl: string,                 // 视频url

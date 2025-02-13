@@ -1,5 +1,6 @@
 import { h } from "koishi"
 import { tryWbi } from "./util"
+import { Config } from "./config"
 
 const rcmdUrl = 'https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd'
 
@@ -67,18 +68,20 @@ interface Data {
     user_feature: null,
 }
 
-export async function getFeed(session?: string, keyword?: string): Promise<string> {
-    let param: RcmdRequest = {
-        ps: 12,
-    }
-    const res: Data = await tryWbi(rcmdUrl, param, session)
+export async function getFeed(config: Config): Promise<Data> {
+    let param: RcmdRequest = {}
+    const res: Data = await tryWbi(config, rcmdUrl, param)
+    return res
+}
+
+export function feed2msg(res: Data, keyword?: string): string {
     let msg = res.item
         .filter(i => i.goto === 'av' && i.show_info === 1)
         .filter(v => !keyword || v.title.includes(keyword))
         .sort((a, b) => b.pubdate - a.pubdate)
         .map(v => {
             const pubdate = new Date(v.pubdate * 1000)
-            return h('img', { src: v.pic_4_3 }) + '\n' +
+            return h('img', { src: v.pic }) + '\n' +
                 v.title + ' | ' + pubdate.toLocaleString('zh-CN') + ' | UP：' + v.owner.name + '\n' +
                 v.bvid + ' | av' + v.id
         }).join('\n\n')

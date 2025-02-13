@@ -1,5 +1,6 @@
 import { h } from "koishi"
 import { tryWbi } from "./util"
+import { Config } from "./config"
 
 enum SearchType {
     video = 'video',                    // 视频
@@ -205,13 +206,17 @@ const typeSearchUrl = 'https://api.bilibili.com/x/web-interface/search/type'
 
 const searchUrl = 'https://api.bilibili.com/x/web-interface/search/all/v2'
 
-export async function doTypeSearch(keyword: string, session?: string): Promise<string> {
+export async function doTypeSearch(config: Config, keyword: string): Promise<TypeSearchResponse> {
     let param: SearchRequest = {
         search_type: SearchType.video,
         keyword,
     }
-    const res: TypeSearchResponse = await tryWbi(typeSearchUrl, param, session)
-    let msg = res.result
+    const res: TypeSearchResponse = await tryWbi(config, typeSearchUrl, param)
+    return res
+}
+
+export function search2msg(result: Array<Video>): string {
+    let msg = result
         .filter(r => r.type === 'video')
         .sort(sortVideo)
         .map(v => {

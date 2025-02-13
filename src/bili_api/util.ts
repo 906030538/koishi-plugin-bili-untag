@@ -1,5 +1,5 @@
 import md5 from 'md5'
-import { userAgent } from '../const'
+import { Config } from './config'
 
 const mixinKeyEncTab: number[] = [
     46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35,
@@ -31,15 +31,15 @@ function getMixinKey(orig: string) {
 
 // export interface Param { [key: string]: string | number }
 // 获取最新的 img_key 和 sub_key
-async function getWbiKeys(session: string, force: boolean): Promise<string> {
+async function getWbiKeys(config: Config, force: boolean): Promise<string> {
     if (!force && Date.now() - timestamp < 86400000) {
         return mixin_key
     }
     const res = await fetch('https://api.bilibili.com/x/web-interface/nav', {
         headers: {
             // SESSDATA 字段
-            Cookie: 'SESSDATA=' + session,
-            'User-Agent': userAgent,
+            Cookie: 'SESSDATA=' + config.session,
+            'User-Agent': config.agent,
             Referer: 'https://www.bilibili.com/'//对于直接浏览器调用可能不适用
         }
     })
@@ -53,8 +53,8 @@ async function getWbiKeys(session: string, force: boolean): Promise<string> {
 }
 
 // 为请求参数进行 wbi 签名
-async function encWbi(params: Object, force = false, session?: string): Promise<string> {
-    const mixin_key: string = await getWbiKeys(session, force)
+async function encWbi(config: Config, params: Object, force = false): Promise<string> {
+    const mixin_key: string = await getWbiKeys(config, force)
     // 添加 wts 字段
     Object.assign(params, { wts: Math.round(Date.now() / 1000) })
     // 按照 key 重排参数
@@ -102,15 +102,15 @@ export interface JsonResponse<T> {
     data: T
 }
 
-export async function doRequest<T>(url: string, param: Object, session?: string): Promise<T> {
+export async function doRequest<T>(config: Config, url: string, param: Object): Promise<T> {
     let query = Object
         .entries(param)
         .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
         .join('&')
     const headers = {
         // SESSDATA 字段
-        Cookie: 'SESSDATA=' + session,
-        'User-Agent': userAgent,
+        Cookie: 'SESSDATA=' + config,
+        'User-Agent': config.agent,
         Referer: 'https://www.bilibili.com/' //对于直接浏览器调用可能不适用
     }
     let res = await fetch(url + '?' + query, { headers })
@@ -118,16 +118,18 @@ export async function doRequest<T>(url: string, param: Object, session?: string)
     return json_res.data
 }
 
-export async function tryWbi<T>(url: string, param: Object, session?: string): Promise<T> {
-    let query = await encWbi(param, false, session)
+export async function tryWbi<T>(config: Config, url: string, param: Object): Promise<T> {
+    let query = await encWbi(config, param, false)
     const headers = {
         // SESSDATA 字段
-        Cookie: 'SESSDATA=' + session,
-        'User-Agent': userAgent,
+        Cookie: 'SESSDATA=' + config,
+        'User-Agent': config.agent,
         Referer: 'https://www.bilibili.com/' //对于直接浏览器调用可能不适用
     }
     let res = await fetch(url + '?' + query, { headers })
-    let json_res: JsonResponse<T> = await res.json()
+    let text = await res.text()
+    console.log(text)
+    let json_res: JsonResponse<T> = JSON.parse(text)
     switch (json_res.code) {
         case ResponseCode.success:
             return json_res.data
@@ -137,9 +139,11 @@ export async function tryWbi<T>(url: string, param: Object, session?: string): P
         case ResponseCode.not_found:
             throw json_res.message
     }
-    query = await encWbi(param, true, session)
+    query = await encWbi(config, param, true)
     res = await fetch(url + '?' + query, { headers })
-    json_res = await res.json()
+    text = await res.text()
+    console.log(text)
+    json_res = JSON.parse(text)
     if (json_res.code !== ResponseCode.success) {
         throw json_res.message
     }

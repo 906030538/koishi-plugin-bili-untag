@@ -10,10 +10,9 @@ async function update_user(ctx: Context, u: User) {
     let old = await ctx.database
         .select('biliuntag_user')
         .where(r => $.eq(r.id, u.id))
-        .orderBy(r => r.time, 'desc')
-        .limit(1)
-        .execute()[0];
-    if (!old || old.face !== u.face || old.name !== u.name) {
+        .orderBy('time', 'desc')
+        .execute()
+    if (!old || old[0].face !== u.face || old[0].name !== u.name) {
         await ctx.database.create('biliuntag_user', u);
     }
 }
@@ -22,7 +21,7 @@ export async function spider(ctx: Context, config: Config) {
     // try feed
     let res1 = await getFeed(config)
     res1.item
-        .filter(i => i.goto === 'av' && i.show_info === 1)
+        .filter(i => i.goto === 'av' && i.show_info === 0 && ~i.title.indexOf(config.keyword))
         .forEach(async i => {
             let [u, v] = feed2Video(i)
             await update_user(ctx, u);

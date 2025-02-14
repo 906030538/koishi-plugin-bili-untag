@@ -16,9 +16,12 @@ export interface Config {
 export const Config: Schema<Config> = Schema.object({})
 
 export function apply(ctx: Context, config: Config) {
-  ctx.inject(['database', 'cron'], ctx => {
+  ctx.inject(['database'], ctx => {
     db(ctx)
+  })
+  ctx.inject(['cron', 'database'], ctx => {
     ctx.cron('*/10 * * * *', async () => spider(ctx, config))
+    ctx.command('spider').action(async () => spider(ctx, config))
     ctx.cron('0 0-2,9-23 * * *', async () => {
       // push
     })

@@ -22,7 +22,20 @@ interface RcmdRequest {
     uniq_id?: string,
 }
 
-interface Item {
+export interface Owner {
+    face: string
+    mid: number
+    name: string
+}
+
+interface Stat {
+    view: number,
+    like: number,
+    danmaku: number,
+    vt: number,
+}
+
+export interface Item {
     av_feature: null,
     business_info: object,
     bvid: string,
@@ -36,11 +49,7 @@ interface Item {
     is_followed: number,
     is_stock: number,
     ogv_info: null,
-    owner: {
-        face: string,
-        mid: number,
-        name: string,
-    },
+    owner: Owner,
     pic: string,
     pic_4_3: string,
     pos: number,
@@ -50,7 +59,7 @@ interface Item {
     },
     room_info: object,
     show_info: number,
-    stat: object,
+    stat: Stat,
     title: string,
     track_id: string,
     uri: string,

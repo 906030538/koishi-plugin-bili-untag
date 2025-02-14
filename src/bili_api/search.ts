@@ -2,7 +2,7 @@ import { h } from "koishi"
 import { tryWbi } from "./util"
 import { Config } from "./config"
 
-enum SearchType {
+export enum SearchType {
     video = 'video',                    // 视频
     media_bangumi = 'media_bangumi',    // 番剧
     media_ft = 'media_ft',              // 影视
@@ -15,7 +15,7 @@ enum SearchType {
     photo = 'photo',                    // 相簿
 }
 
-enum SearchOrder {
+export enum SearchOrder {
     totalrank = 'totalrank',    // 综合
     click = 'click',            // 点击
     pubdate = 'pubdate',        // 最新
@@ -29,27 +29,27 @@ enum SearchOrder {
     level = 'level',            // 等级(用户)
 }
 
-enum SearchSortOrder {
-    dec,    // 由高到低
-    inc,    // 由低到高
+export enum SearchSortOrder {
+    dec = 0,    // 由高到低
+    inc = 1,    // 由低到高
 }
 
-enum SearchUserType {
-    all,    // 全部
-    up,     // up主
-    normal, // 普通用户
-    verify, // 认证用户
+export enum SearchUserType {
+    all = 0,    // 全部
+    up = 1,     // up主
+    normal = 2, // 普通用户
+    verify = 3, // 认证用户
 }
 
-enum SearchDuration {
-    all,        // 全部时长
-    short,      // 10分钟以下
-    mid,        // 10-30分钟
-    long,       // 30-60分钟
-    toolong,    // 60分钟以上
+export enum SearchDuration {
+    all = 0,        // 全部时长
+    short = 1,      // 10分钟以下
+    mid = 2,        // 10-30分钟
+    long = 3,       // 30-60分钟
+    toolong = 4,    // 60分钟以上
 }
 
-enum CategoryId {
+export enum CategoryId {
     all = 0,    // 全部
     game = 1,   // 游戏 | 画友
     anime = 2,  // 动画 | 摄影
@@ -57,8 +57,8 @@ enum CategoryId {
     tech = 17,  // 科技
 }
 
-interface SearchRequest {
-    search_type: SearchType         // 搜索目标类型
+export interface SearchRequest {
+    search_type?: SearchType        // 搜索目标类型
     keyword: string                 // 关键词
     order?: SearchOrder             // 排序方式
     order_sort?: SearchSortOrder    // 用户粉丝数及等级排序顺序
@@ -174,21 +174,42 @@ interface Photo {
     type: 'photo'
 }
 
-export interface SearchResponse { }
+type Result = Array<Video | Media | LiveRoom | LiveUser | Article | Topic | BiliUser | Photo>
+
+interface SearchResult {
+    result_type: 'video' | 'media_bangumi' | 'media_ft' | 'live_room' | 'live_user' | 'article' | 'topic' | 'bili_user' | 'photo',
+    data: Result,
+}
+
+export interface SearchResponse {
+    seid: number                // 搜索seid
+    page: number                // 当前页码
+    pagesize: number            // 每页条数 固定20
+    numResults: number          // 总条数 最大值为1000
+    numPages: number            // 总计分页数 最大值为50
+    suggest_keyword: string     // 空
+    rqt_type: string            // search
+    cost_time: object           // 详细搜索用时
+    exp_list: object            // 
+    egg_hit: number             // 0
+    pageinfo: object            // 副分页信息 只在搜索类型为直播间及主播有效
+    result: Array<SearchResult> // 结果列表
+    show_column: number         // 0
+}
 
 export interface TypeSearchResponse {
     seid: number            // 搜索seid
     page: number            // 当前页码
-    pagesize: number        // 每页条数	固定20
-    numResults: number      // 总条数	最大值为1000
-    numPages: number        // 总计分页数	最大值为50
+    pagesize: number        // 每页条数 固定20
+    numResults: number      // 总条数 最大值为1000
+    numPages: number        // 总计分页数 最大值为50
     suggest_keyword: string // 空
     rqt_type: string        // search
-    cost_time: Object       // 详细搜索用时	大概
-    exp_list: Object        // 
+    cost_time: object       // 详细搜索用时
+    exp_list: object        // 
     egg_hit: number         // 0
-    pageinfo: Object        // 副分页信息	只在搜索类型为直播间及主播有效
-    result: Array<Video | Media | LiveRoom | LiveUser | Article | Topic | BiliUser | Photo> // 结果列表
+    pageinfo: object        // 副分页信息 只在搜索类型为直播间及主播有效
+    result: Result          // 结果列表
     show_column: number     // 0
 }
 
@@ -206,13 +227,13 @@ const typeSearchUrl = 'https://api.bilibili.com/x/web-interface/search/type'
 
 const searchUrl = 'https://api.bilibili.com/x/web-interface/search/all/v2'
 
-export async function doTypeSearch(config: Config, keyword: string): Promise<TypeSearchResponse> {
-    let param: SearchRequest = {
-        search_type: SearchType.video,
-        keyword,
-    }
-    const res: TypeSearchResponse = await tryWbi(config, typeSearchUrl, param)
-    return res
+export function doSearch(config: Config, keyword: string): Promise<SearchResponse> {
+    let param: SearchRequest = { keyword }
+    return tryWbi(config, searchUrl, param)
+}
+
+export function doTypeSearch(config: Config, param: SearchRequest): Promise<TypeSearchResponse> {
+    return tryWbi(config, typeSearchUrl, param)
 }
 
 export function search2msg(result: Array<Video>): string {

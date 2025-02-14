@@ -1,6 +1,6 @@
 import { Context, Schema } from 'koishi'
 import { db } from './model'
-import { doTypeSearch, search2msg } from './bili_api/search'
+import { doTypeSearch, search2msg, SearchOrder, SearchType } from './bili_api/search'
 import { feed2msg, getFeed } from './bili_api/feed'
 import 'koishi-plugin-cron'
 import { spider } from './spider'
@@ -25,7 +25,11 @@ export function apply(ctx: Context, config: Config) {
   })
 
   ctx.command("search <keyword>").action(async (_, keyword) => {
-    let res = await doTypeSearch(config, keyword)
+    let res = await doTypeSearch(config, {
+      search_type: SearchType.video,
+      keyword,
+      order: SearchOrder.pubdate,
+    })
     return search2msg(res.result.filter(i => i.type === 'video'))
   })
 

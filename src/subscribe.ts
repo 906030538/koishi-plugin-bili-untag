@@ -1,42 +1,108 @@
 import { $, Context, Session } from 'koishi'
 import { Subscribe } from './model'
 
-export async function new_subscribe(ctx: Context, session: Session, keyword: string): Promise<number> {
-    const sub = await ctx.database.create('biliuntag_subscribe', {
+async function new_subscribe(session: Session, keyword: string): Promise<number> {
+    const sub = await session.app.database.create('biliuntag_subscribe', {
         keyword,
-        target: [session.platform]
+        target: [session.platform + ':' + (session.guildId ?? session.userId)]
     })
     return sub.id
 }
 
-export function get_subscribes(ctx: Context, session?: Session): Promise<Array<Subscribe>> {
+async function del_subscribe(ctx: Context, sid: number): Promise<boolean> {
+    const sub = await ctx.database.remove('biliuntag_subscribe', sid)
+    return sub.removed > 0
+}
+
+function get_subscribes(ctx: Context, keyword?: string, session?: Session): Promise<Array<Subscribe>> {
     let s = ctx.database.select('biliuntag_subscribe')
     if (session) {
-        s = s.where(r => $.in(session.platform, r.target))
+        const target = session.platform + ':' + (session.guildId ?? session.userId)
+        s = s.where({ target: { $el: target } })
+    }
+    if (keyword) {
+        s = s.where(r => $.eq(r.keyword, keyword))
     }
     return s.execute()
 }
 
-export async function add_subscribe(ctx: Context, session: Session, sid: number): Promise<boolean> {
-    const sub = await ctx.database.get('biliuntag_subscribe', sid)[0] as Subscribe | undefined
-    if (sub && !~sub.target.indexOf(session.platform)) {
-        sub.target.push(session.platform)
-        await ctx.database.set('biliuntag_subscribe', sid, {
-            target: sub.target
-        })
-        return true
+async function update_subscribe(
+    session: Session,
+    key: number | string,
+    add: boolean
+): Promise<Array<Subscribe>> {
+    let subs: Array<Subscribe>
+    if (typeof key === 'number') {
+        subs = await session.app.database.get('biliuntag_subscribe', key)
+    } else {
+        subs = await session.app.database.get('biliuntag_subscribe', r => $.eq(r.keyword, key))
     }
-    return false
+    if (subs.length !== 1) return subs
+    const sub = subs[0]
+    const target = session.platform + ':' + (session.guildId ?? session.userId)
+    let update = false
+    if (add && !~sub.target.indexOf(target)) {
+        sub.target.push(target)
+        update = true
+    }
+    if (!add && ~sub.target.indexOf(target)) {
+        sub.target = sub.target.filter(t => t !== target)
+        update = true
+    }
+    if (update) {
+        await session.app.database.set('biliuntag_subscribe', sub.id, { target: sub.target })
+    }
+    return [sub]
 }
 
-export async function un_subscribe(ctx: Context, session: Session, sid: number): Promise<boolean> {
-    const sub = await ctx.database.get('biliuntag_subscribe', sid)[0] as Subscribe | undefined
-    if (sub && ~sub.target.indexOf(session.platform)) {
-        sub.target.filter(t => t !== session.platform)
-        await ctx.database.set('biliuntag_subscribe', sid, {
-            target: sub.target
+function subscribe2msg(subs: Array<Subscribe>): string {
+    return subs.map(s => `(${s.id}) ${s.keyword}`).join('\n')
+}
+
+export async function subscribe(ctx: Context) {
+    ctx.command('subscribe.new <keyword>').action(async ({ session }, keyword) => {
+        const sid = await new_subscribe(session, keyword)
+        return `新订阅已经创建: (${sid}) ${keyword}`
+    })
+    ctx.command('subscribe.get [key]')
+        .option('all', '<all:boolean>')
+        .action(async ({ session, options }, key) => {
+            let subs: Array<Subscribe>
+            if (options.all) {
+                subs = await get_subscribes(ctx, key)
+            } else {
+                subs = await get_subscribes(ctx, key, session)
+            }
+            if (!subs.length) return '找不到任何订阅'
+            return subscribe2msg(subs)
         })
-        return true
-    }
-    return false
+    ctx.command('subscribe.add [key]')
+        .option('id', '<sid:number>')
+        .action(async ({ session, options }, key) => {
+            const subs = await update_subscribe(session, options.id ?? key, true)
+            if (!subs.length) return '找不到该订阅'
+            if (subs.length === 1) return `订阅成功: (${subs[0].id}) ${subs[0].keyword}`
+            session.send('请选择要订阅的id:\n' + subscribe2msg(subs))
+            const id = Number(await session.prompt())
+            if (!id) return `id错误`
+            return session.execute(`subscribe.add --id ${id}`)
+        })
+    ctx.command('subscribe.cancel [key]')
+        .option('id', '<sid:number>')
+        .action(async ({ session, options }, key) => {
+            const subs = await update_subscribe(session, options.id ?? key, false)
+            if (!subs.length) return '找不到该订阅'
+            if (subs.length === 1) return `退订成功: (${subs[0].id}) ${subs[0].keyword}`
+            session.send('请选择要退订的id:\n' + subscribe2msg(subs))
+            const id = Number(await session.prompt())
+            if (!id) return `订阅失败，错误的id`
+            return session.execute(`subscribe.cancel --id ${id}`)
+        })
+    ctx.command('subscribe.remove <sid:number>').action(async (_, sid) => {
+        if (await del_subscribe(ctx, sid)) {
+            return `退订成功: ${sid}`
+        } else {
+            return `退订失败: ${sid}`
+        }
+    })
 }

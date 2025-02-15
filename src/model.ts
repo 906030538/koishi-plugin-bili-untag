@@ -84,7 +84,7 @@ export function db(ctx: Context) {
         author: 'unsigned',
         pubdate: 'timestamp',
         senddate: 'timestamp',
-        area: { type: 'integer', nullable: true },
+        area: { type: 'integer', nullable: true, initial: -1 },
 
         title: 'string',
         description: 'text',
@@ -93,14 +93,14 @@ export function db(ctx: Context) {
         duration: 'integer',
         view: 'integer',
         like: 'integer',
-        coin: { type: 'integer', nullable: true },
-        favorite: { type: 'integer', nullable: true },
-        reply: { type: 'integer', nullable: true },
+        coin: { type: 'integer', nullable: true, initial: -1 },
+        favorite: { type: 'integer', nullable: true, initial: -1 },
+        reply: { type: 'integer', nullable: true, initial: -1 },
         danmaku: 'integer',
-        share: { type: 'integer', nullable: true },
-        dislike: { type: 'integer', nullable: true },
-        now_rank: { type: 'integer', nullable: true },
-        his_rank: { type: 'integer', nullable: true },
+        share: { type: 'integer', nullable: true, initial: -1 },
+        dislike: { type: 'integer', nullable: true, initial: -1 },
+        now_rank: { type: 'integer', nullable: true, initial: -1 },
+        his_rank: { type: 'integer', nullable: true, initial: -1 },
     }, {
         foreign: {
             author: ['biliuntag_user', 'id']

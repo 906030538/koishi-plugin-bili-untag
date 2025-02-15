@@ -7,12 +7,15 @@ import { getFeed } from "./bili_api/feed";
 import { feed2Video } from "./convert";
 
 async function update_user(ctx: Context, u: User) {
-    let old = await ctx.database
+    const s = u.face.indexOf('.hdslb.com/')
+    if (~s) u.face = u.face.slice(s + 10)
+    const users = await ctx.database
         .select('biliuntag_user')
         .where(r => $.eq(r.id, u.id))
         .orderBy('time', 'desc')
         .execute()
-    if (!old || old[0].face !== u.face || old[0].name !== u.name) {
+    const old = users[0]
+    if (!old || old.face !== u.face || old.name !== u.name) {
         await ctx.database.create('biliuntag_user', u);
     }
 }

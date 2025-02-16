@@ -5,6 +5,7 @@ import { feed2msg, getFeed } from './bili_api/feed'
 import 'koishi-plugin-cron'
 import { spider } from './spider'
 import { subscribe } from './subscribe'
+import { rule } from './rule'
 
 export const name = 'bili-untag'
 
@@ -36,6 +37,7 @@ export function apply(ctx: Context, config: Config) {
   ctx.inject(['database'], ctx => {
     db(ctx)
     subscribe(ctx)
+    rule(ctx)
   })
   ctx.inject(['cron', 'database'], ctx => {
     ctx.cron('*/10 * * * *', async () => spider(ctx, config))

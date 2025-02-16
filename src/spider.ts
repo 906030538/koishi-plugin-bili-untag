@@ -5,6 +5,8 @@ import { User } from "./model";
 import { from_search } from './convert';
 import { getFeed } from "./bili_api/feed";
 import { feed2Video } from "./convert";
+import { get_subscribes } from "./subscribe";
+import { Filter } from "./rule";
 
 async function update_user(ctx: Context, u: User) {
     const s = u.face.indexOf('.hdslb.com/')
@@ -21,22 +23,34 @@ async function update_user(ctx: Context, u: User) {
 }
 
 export async function spider(ctx: Context, config: Config) {
+    const subs = await get_subscribes(ctx)
+    for (const sub of subs) {
+        const filter = await Filter.new(ctx, sub.id)
+        await spider_work(ctx, config, sub.keyword, filter)
+    }
+}
+
+async function spider_work(ctx: Context, config: Config, keyword: string, filter: Filter) {
     // try feed
     let res1 = await getFeed(config)
     res1.item
-        .filter(i => i.goto === 'av' && i.show_info === 0 && ~i.title.indexOf(config.keyword))
+        .filter(i => i.goto === 'av')
         .forEach(async i => {
-            let [u, v] = feed2Video(i)
-            await update_user(ctx, u);
-            await ctx.database.upsert('biliuntag_video', [v])
+            const [u, v] = feed2Video(i)
+            const source = filter.calc(v)
+            if (source > 0) {
+                await update_user(ctx, u);
+                await ctx.database.upsert('biliuntag_video', [v])
+            }
         })
     // try default search
-    let res2 = await doSearch(config, config.keyword)
+    let res2 = await doSearch(config, keyword)
     res2.result
         .filter(r => r.result_type === 'video')
         .flatMap(r => r.data.filter(v => v.type === 'video'))
         .forEach(async r => {
-            let [u, v] = from_search(r)
+            const [u, v] = from_search(r)
+            const source = filter.calc(v)
             await update_user(ctx, u);
             await ctx.database.upsert('biliuntag_video', [v])
         })
@@ -47,7 +61,8 @@ export async function spider(ctx: Context, config: Config) {
         order: SearchOrder.pubdate,
     })
     res3.result.filter(r => r.type === 'video').forEach(async r => {
-        let [u, v] = from_search(r)
+        const [u, v] = from_search(r)
+        const source = filter.calc(v)
         await update_user(ctx, u);
         await ctx.database.upsert('biliuntag_video', [v])
     })

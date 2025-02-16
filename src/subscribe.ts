@@ -14,7 +14,7 @@ async function del_subscribe(ctx: Context, sid: number): Promise<boolean> {
     return sub.removed > 0
 }
 
-function get_subscribes(ctx: Context, keyword?: string, session?: Session): Promise<Array<Subscribe>> {
+export function get_subscribes(ctx: Context, keyword?: string, session?: Session): Promise<Array<Subscribe>> {
     let s = ctx.database.select('biliuntag_subscribe')
     if (session) {
         const target = session.platform + ':' + (session.guildId ?? session.userId)

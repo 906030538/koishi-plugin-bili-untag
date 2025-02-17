@@ -1,18 +1,58 @@
 import { $, Context } from 'koishi'
-import { Rule, Video } from './model'
+import { Rule, RuleType, Video } from './model'
 
 export async function get_rules(ctx: Context, sid: number): Promise<Array<Rule>> {
     return await ctx.database.get('biliuntag_rule', r => $.eq(r.sid, sid))
 }
 
 function rule2msg(rule: Rule): string {
-    return `(${rule.id}:${rule.action}) ${rule.matcher}`
+    const text = (rule.type === RuleType.Date)
+        ? new Date(Number(rule.matcher[0])).toLocaleString('zh-CN')
+        : rule.matcher.join(",")
+    return `(${rule.id}:${rule.action}) ${text}`
 }
 
 export async function rule(ctx: Context) {
     ctx.command('rule.new <sid:number> <source:number> <keyword> ')
-        .action(async (_, sid, action, matcher) => {
-            const rule = await ctx.database.create('biliuntag_rule', { sid, matcher, action })
+        .option('type', '<type>')
+        .action(async ({ options }, sid, action, keyword) => {
+            let matcher: Array<string> = JSON.parse(keyword);
+            if (!(matcher instanceof Array)) {
+                matcher = [keyword]
+            }
+            let type = RuleType.Text
+            switch (options.type) {
+                case 'title':
+                    type = RuleType.Title
+                    break
+                case 'desc':
+                    type = RuleType.Desc
+                    break
+                case 'tag':
+                    type = RuleType.Tag
+                    break
+                case 'author':
+                    type = RuleType.Author
+                    break
+                case 'date':
+                    type = RuleType.Date
+                    break
+                case 'area':
+                    type = RuleType.Area
+                    break
+                case 'regex':
+                    type = RuleType.Regex
+                    break
+                case 'text':
+                default:
+                    break
+            }
+            const rule = await ctx.database.create('biliuntag_rule', {
+                sid,
+                type,
+                matcher,
+                action
+            })
             return '新规则创建: ' + rule2msg(rule)
         })
     ctx.command('rule.list <sid:number>').action(async (_, sid) => {
@@ -23,11 +63,19 @@ export async function rule(ctx: Context) {
         .option('keyword', '<keyword>')
         .option('source', '<source:number>')
         .action(async ({ options }, id) => {
-            const res = await ctx.database.set('biliuntag_rule', id, {
-                matcher: options.keyword,
-                action: options.source
-            })
-            if (res.modified) {
+            let update: { matcher?: Array<string>, action?: number } = {}
+            if (options.keyword) {
+                let matcher: Array<string> = JSON.parse(options.keyword);
+                if (!(matcher instanceof Array)) {
+                    matcher = [options.keyword]
+                }
+                update.matcher = matcher
+            }
+            if (options.source) {
+                update.action = options.source
+            }
+            const res = await ctx.database.set('biliuntag_rule', id, update)
+            if (res.inserted) {
                 return `规则更新成功: ${id}`
             }
             return `找不到规则id`
@@ -49,9 +97,78 @@ export class Filter {
     calc = (video: Video): number => {
         let source = 0
         this.rules.forEach(rule => {
-            if (video.title && video.title.indexOf(rule.matcher)
-                || video.description && video.description.indexOf(rule.matcher)
-                || video.tag && video.tag.indexOf(rule.matcher)) {
+            let matched = false
+            switch (rule.type) {
+                case RuleType.Title:
+                    for (let m of rule.matcher) {
+                        if (video.title.includes(m)) {
+                            matched = true
+                            break
+                        }
+                    }
+                    break
+                case RuleType.Desc:
+                    if (video.description) for (let m of rule.matcher) {
+                        if (video.description.includes(m)) {
+                            matched = true
+                            break
+                        }
+                    }
+                    break
+                case RuleType.Tag:
+                    for (let tag of video.tag) {
+                        if (rule.matcher.includes(tag)) {
+                            matched = true
+                            break
+                        }
+                    }
+                    break
+                case RuleType.Author:
+                    // match author.name
+                    break
+                case RuleType.Date:
+                    if (typeof video.pubdate === 'number' && video.pubdate > Number(rule.matcher[0])) {
+                        matched = true
+                        break
+                    }
+                    break
+                case RuleType.Area:
+                    for (let m of rule.matcher) {
+                        if (video.area === Number(m)) {
+                            matched = true
+                            break
+                        }
+                    }
+                    break
+                case RuleType.Regex:
+                    for (let m of rule.matcher) {
+                        let r = RegExp(m)
+                        if (r.exec(video.title) || r.exec(video.description)) {
+                            matched = true
+                            break
+                        }
+                        if (!matched) for (let tag of video.tag) {
+                            if (r.exec(tag)) {
+                                matched = true
+                                break
+                            }
+                        }
+                    }
+                    break
+                case RuleType.Text:
+                    for (let m of rule.matcher) {
+                        if (video.title && video.title.includes(m)
+                            || video.description && video.description.includes(m)
+                            || video.tag && video.tag.includes(m)
+                        ) {
+                            matched = true
+                            break
+                        }
+                    }
+                default:
+                    break
+            }
+            if (matched) {
                 source += rule.action
             }
         })

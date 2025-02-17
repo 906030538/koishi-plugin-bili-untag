@@ -41,11 +41,10 @@ async function update_subscribe(
     const sub = subs[0]
     const target = session.platform + ':' + (session.guildId ?? session.userId)
     let update = false
-    if (add && !~sub.target.indexOf(target)) {
+    if (add && !sub.target.includes(target)) {
         sub.target.push(target)
         update = true
-    }
-    if (!add && ~sub.target.indexOf(target)) {
+    } else if (!add && sub.target.includes(target)) {
         sub.target = sub.target.filter(t => t !== target)
         update = true
     }

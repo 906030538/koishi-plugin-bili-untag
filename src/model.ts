@@ -47,10 +47,22 @@ export interface Subscribe {
     target: Array<string>,
 }
 
+export enum RuleType {
+    Text,   // Title + Desc + Tag + Author
+    Title,
+    Desc,
+    Tag,
+    Author,
+    Date,
+    Area,
+    Regex,
+}
+
 export interface Rule {
     id: number,
     sid: number,
-    matcher: string,
+    type: RuleType,
+    matcher: Array<string>,
     action: number,
 }
 
@@ -116,7 +128,8 @@ export function db(ctx: Context) {
     ctx.model.extend('biliuntag_rule', {
         id: 'unsigned',
         sid: 'unsigned',
-        matcher: 'string',
+        type: 'integer',
+        matcher: 'list',
         action: 'integer',
     }, {
         autoInc: true,

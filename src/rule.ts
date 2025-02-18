@@ -1,5 +1,5 @@
 import { $, Context } from 'koishi'
-import { Rule, RuleType, Video } from './model'
+import { Rule, RuleType, User, Video } from './model'
 
 export async function get_rules(ctx: Context, sid: number): Promise<Array<Rule>> {
     return await ctx.database.get('biliuntag_rule', r => $.eq(r.sid, sid))
@@ -94,7 +94,7 @@ export class Filter {
     sid: number
     rules: Array<Rule>
 
-    calc = (video: Video): number => {
+    calc = (video: Video, user?: User): number => {
         let source = 0
         this.rules.forEach(rule => {
             let matched = false
@@ -124,7 +124,12 @@ export class Filter {
                     }
                     break
                 case RuleType.Author:
-                    // match author.name
+                    if (user) for (let m of rule.matcher) {
+                        if (user.name.includes(m)) {
+                            matched = true
+                            break
+                        }
+                    }
                     break
                 case RuleType.Date:
                     if (typeof video.pubdate === 'number' && video.pubdate > Number(rule.matcher[0])) {
@@ -143,7 +148,7 @@ export class Filter {
                 case RuleType.Regex:
                     for (let m of rule.matcher) {
                         let r = RegExp(m)
-                        if (r.exec(video.title) || r.exec(video.description)) {
+                        if (r.exec(video.title) || r.exec(video.description) || r.exec(user?.name)) {
                             matched = true
                             break
                         }
@@ -160,6 +165,7 @@ export class Filter {
                         if (video.title && video.title.includes(m)
                             || video.description && video.description.includes(m)
                             || video.tag && video.tag.includes(m)
+                            || user && user.name.includes(m)
                         ) {
                             matched = true
                             break

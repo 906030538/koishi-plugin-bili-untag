@@ -1,7 +1,7 @@
 import { $, Context } from "koishi";
 import { Config } from ".";
 import { doSearch, doTypeSearch, SearchOrder, SearchType } from "./bili_api/search";
-import { User } from "./model";
+import { SubVideoStat, User, Video } from "./model";
 import { from_search } from './convert';
 import { getFeed } from "./bili_api/feed";
 import { feed2Video } from "./convert";
@@ -22,27 +22,34 @@ async function update_user(ctx: Context, u: User) {
     }
 }
 
+async function insert_video(ctx: Context, video: Video, user: User, filter: Filter) {
+    const source = filter.calc(video, user)
+    let stat = SubVideoStat.Wait
+    if (source <= 0) return // Reject
+    if (source > 100) stat = SubVideoStat.Accept
+    await update_user(ctx, user);
+    await ctx.database.upsert('biliuntag_video', [video])
+    await ctx.database.upsert('biliuntag_source', [{
+        sid: filter.sid,
+        avid: video.id,
+        source,
+        stat
+    }])
+}
+
 export async function spider(ctx: Context, config: Config) {
+    const res = await getFeed(config)
+    let feed = res.item.filter(i => i.goto === 'av').map(feed2Video)
     const subs = await get_subscribes(ctx)
     for (const sub of subs) {
         const filter = await Filter.new(ctx, sub.id)
         await spider_work(ctx, config, sub.keyword, filter)
+        // try feed
+        feed.forEach(async ([u, v]) => await insert_video(ctx, v, u, filter))
     }
 }
 
 async function spider_work(ctx: Context, config: Config, keyword: string, filter: Filter) {
-    // try feed
-    let res1 = await getFeed(config)
-    res1.item
-        .filter(i => i.goto === 'av')
-        .forEach(async i => {
-            const [u, v] = feed2Video(i)
-            const source = filter.calc(v)
-            if (source > 0) {
-                await update_user(ctx, u);
-                await ctx.database.upsert('biliuntag_video', [v])
-            }
-        })
     // try default search
     let res2 = await doSearch(config, keyword)
     res2.result
@@ -50,9 +57,7 @@ async function spider_work(ctx: Context, config: Config, keyword: string, filter
         .flatMap(r => r.data.filter(v => v.type === 'video'))
         .forEach(async r => {
             const [u, v] = from_search(r)
-            const source = filter.calc(v)
-            await update_user(ctx, u);
-            await ctx.database.upsert('biliuntag_video', [v])
+            await insert_video(ctx, v, u, filter)
         })
     // try search newest
     let res3 = await doTypeSearch(config, {
@@ -62,8 +67,6 @@ async function spider_work(ctx: Context, config: Config, keyword: string, filter
     })
     res3.result.filter(r => r.type === 'video').forEach(async r => {
         const [u, v] = from_search(r)
-        const source = filter.calc(v)
-        await update_user(ctx, u);
-        await ctx.database.upsert('biliuntag_video', [v])
+        await insert_video(ctx, v, u, filter)
     })
 }

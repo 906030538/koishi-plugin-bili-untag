@@ -128,7 +128,6 @@ export async function tryWbi<T>(config: Config, url: string, param: Object): Pro
     }
     let res = await fetch(url + '?' + query, { headers })
     let text = await res.text()
-    console.log(text)
     let json_res: JsonResponse<T> = JSON.parse(text)
     switch (json_res.code) {
         case ResponseCode.success:
@@ -142,7 +141,6 @@ export async function tryWbi<T>(config: Config, url: string, param: Object): Pro
     query = await encWbi(config, param, true)
     res = await fetch(url + '?' + query, { headers })
     text = await res.text()
-    console.log(text)
     json_res = JSON.parse(text)
     if (json_res.code !== ResponseCode.success) {
         throw json_res.message

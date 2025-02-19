@@ -48,14 +48,15 @@ export interface Subscribe {
 }
 
 export enum RuleType {
-    Text,   // Title + Desc + Tag + Author
-    Title,
-    Desc,
-    Tag,
-    Author,
-    Date,
-    Area,
-    Regex,
+    Action = 0,
+    Text = 1,   // Title + Desc + Tag + Author
+    Title = 2,
+    Desc = 3,
+    Tag = 4,
+    Author = 5,
+    Date = 6,
+    Area = 7,
+    Regex = 8,
 }
 
 export interface Rule {
@@ -68,9 +69,9 @@ export interface Rule {
 
 export enum SubVideoStat {
     Reject = -1,
-    Wait,
-    Accept,
-    Pushed,
+    Wait = 0,
+    Accept = 1,
+    Pushed = 2,
 }
 
 export interface Source {

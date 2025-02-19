@@ -59,11 +59,11 @@ function subscribe2msg(subs: Array<Subscribe>): string {
 }
 
 export async function subscribe(ctx: Context) {
-    ctx.command('subscribe.new <keyword>').action(async ({ session }, keyword) => {
+    ctx.command('subscribe.new <keyword:text>').action(async ({ session }, keyword) => {
         const sid = await new_subscribe(session, keyword)
         return `新订阅已经创建: (${sid}) ${keyword}`
     })
-    ctx.command('subscribe.get [key]')
+    ctx.command('subscribe.get [key:text]')
         .option('all', '<all:boolean>')
         .action(async ({ session, options }, key) => {
             let subs: Array<Subscribe>
@@ -75,7 +75,7 @@ export async function subscribe(ctx: Context) {
             if (!subs.length) return '找不到任何订阅'
             return subscribe2msg(subs)
         })
-    ctx.command('subscribe.add [key]')
+    ctx.command('subscribe.add [key:text]')
         .option('id', '<sid:number>')
         .action(async ({ session, options }, key) => {
             const subs = await update_subscribe(session, options.id ?? key, true)
@@ -86,7 +86,7 @@ export async function subscribe(ctx: Context) {
             if (!id) return `id错误`
             return session.execute(`subscribe.add --id ${id}`)
         })
-    ctx.command('subscribe.cancel [key]')
+    ctx.command('subscribe.cancel [key:text]')
         .option('id', '<sid:number>')
         .action(async ({ session, options }, key) => {
             const subs = await update_subscribe(session, options.id ?? key, false)
@@ -98,6 +98,7 @@ export async function subscribe(ctx: Context) {
             return session.execute(`subscribe.cancel --id ${id}`)
         })
     ctx.command('subscribe.remove <sid:number>').action(async (_, sid) => {
+        if (typeof sid !== 'number') return '缺少订阅id'
         if (await del_subscribe(ctx, sid)) {
             return `退订成功: ${sid}`
         } else {

@@ -1,12 +1,12 @@
-import { $, Context } from "koishi";
-import { Config } from ".";
-import { doSearch, doTypeSearch, SearchOrder, SearchType } from "./bili_api/search";
-import { SubVideoStat, User, Video } from "./model";
-import { from_search } from './convert';
-import { getFeed } from "./bili_api/feed";
-import { feed2Video } from "./convert";
-import { get_subscribes } from "./subscribe";
-import { Filter } from "./rule";
+import { $, Context } from "koishi"
+import { Config } from "."
+import { doSearch, doTypeSearch, SearchOrder, SearchType } from "./bili_api/search"
+import { SubVideoStat, User, Video } from "./model"
+import { from_search } from './convert'
+import { getFeed } from "./bili_api/feed"
+import { feed2Video } from "./convert"
+import { get_subscribes } from "./subscribe"
+import { Filter } from "./rule"
 
 async function update_user(ctx: Context, u: User) {
     const s = u.face.indexOf('.hdslb.com/')
@@ -18,7 +18,7 @@ async function update_user(ctx: Context, u: User) {
         .execute()
     const old = users[0]
     if (!old || old.face !== u.face || old.name !== u.name) {
-        await ctx.database.create('biliuntag_user', u);
+        await ctx.database.create('biliuntag_user', u)
     }
 }
 
@@ -27,7 +27,7 @@ async function insert_video(ctx: Context, video: Video, user: User, filter: Filt
     let stat = SubVideoStat.Wait
     if (source <= 0) return // Reject
     if (source > 100) stat = SubVideoStat.Accept
-    await update_user(ctx, user);
+    await update_user(ctx, user)
     await ctx.database.upsert('biliuntag_video', [video])
     await ctx.database.upsert('biliuntag_source', [{
         sid: filter.sid,
@@ -62,7 +62,7 @@ async function spider_work(ctx: Context, config: Config, keyword: string, filter
     // try search newest
     let res3 = await doTypeSearch(config, {
         search_type: SearchType.video,
-        keyword: config.keyword,
+        keyword: keyword,
         order: SearchOrder.pubdate,
     })
     res3.result.filter(r => r.type === 'video').forEach(async r => {

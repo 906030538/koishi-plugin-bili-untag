@@ -1,12 +1,11 @@
 import { Context, Schema } from 'koishi'
 import 'koishi-plugin-cron'
-import { doTypeSearch, search2msg, SearchOrder, SearchType } from './bili_api/search'
+import { doSearch, search2msg } from './bili_api/search'
 import { db } from './model'
-import { feed2msg, getFeed } from './bili_api/feed'
 import { spider } from './spider'
 import { subscribe } from './subscribe'
 import { rule } from './rule'
-import { push } from './push'
+import { feed } from './push'
 
 export const name = 'bili-untag'
 
@@ -27,23 +26,16 @@ export function apply(ctx: Context, config: Config) {
   ctx.inject(['cron', 'database'], ctx => {
     ctx.cron('*/10 * * * *', () => spider(ctx, config))
     ctx.command('spider').action(() => spider(ctx, config))
-    ctx.cron('0 0-2,9-23 * * *', async () => {
-      // push
-    })
-    ctx.command('feed').action(async _ => {
-      // let res = await getFeed(config)
-      // return feed2msg(res)
-      await push(ctx)
-    })
+    // ctx.cron('0 0-2,9-23 * * *', async () => push(ctx))
+    ctx.command('feed').action(async ({ session }) => await feed(ctx, session))
   })
 
   ctx.command('search <keyword:text>').action(async (_, keyword) => {
-    let res = await doTypeSearch(config, {
-      search_type: SearchType.video,
-      keyword,
-      order: SearchOrder.pubdate,
-    })
-    return search2msg(res.result.filter(i => i.type === 'video'))
+    const res = await doSearch(config, keyword)
+    const videos = res.result
+      .filter(r => r.result_type === 'video')
+      .flatMap(r => r.data.filter(v => v.type === 'video'))
+    return search2msg(videos)
   })
 
 }

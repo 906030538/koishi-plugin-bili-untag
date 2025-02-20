@@ -14,8 +14,8 @@ function rule2msg(rule: Rule): string {
 
 export async function rule(ctx: Context) {
     ctx.command('rule.new <sid:number> <source:number> [keyword:text]')
-        .option('type', '<type>')
-        .option('json', '<json:text>')
+        .option('type', '-t <type>')
+        .option('json', '-j <json:text>')
         .action(async ({ options }, sid, source, keyword) => {
             if (typeof sid !== 'number') return '缺少订阅id'
             if (typeof source !== 'number') return '缺少积分'
@@ -53,8 +53,9 @@ export async function rule(ctx: Context) {
                     type = RuleType.Regex
                     break
                 case 'text':
-                default:
                     break
+                default:
+                    return '错误的类型，支持的类型有: title,desc,tag,author,date,area,regex,text'
             }
             const rule = await ctx.database.create('biliuntag_rule', {
                 sid,
@@ -70,10 +71,10 @@ export async function rule(ctx: Context) {
         return rules.map(rule2msg).join('\n')
     })
     ctx.command('rule.update <rid:number>')
-        .option('source', '<source:number>')
-        .option('json', '<json:text>')
-        .option('keyword', '<keyword:text>')
-        .option('append', '<append:text>')
+        .option('source', '-s <source:number>')
+        .option('json', '-j <json:text>')
+        .option('keyword', '-k <keyword:text>')
+        .option('append', '-a <append:text>')
         .action(async ({ options }, rid) => {
             if (typeof rid !== 'number') return '缺少规则id'
             let update: { matcher?: Array<string>, action?: number } = {}
@@ -95,16 +96,15 @@ export async function rule(ctx: Context) {
                 update.action = options.source
             }
             const res = await ctx.database.set('biliuntag_rule', rid, update)
-            console.log(res)
-            if (res.inserted) {
+            if (res) {
                 return `规则更新成功: ${rid}`
             }
             return '找不到规则id'
         })
     ctx.command('rule.remove <rid:number>').action(async (_, rid) => {
         if (typeof rid !== 'number') return '缺少规则id'
-        const result = await ctx.database.remove('biliuntag_rule', rid)
-        if (result.removed) {
+        const res = await ctx.database.remove('biliuntag_rule', rid)
+        if (res) {
             return `删除规则成功: ${rid}`
         } else {
             return `删除规则失败: ${rid}`

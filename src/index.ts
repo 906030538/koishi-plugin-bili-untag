@@ -37,7 +37,7 @@ export function apply(ctx: Context, config: Config) {
     })
   })
 
-  ctx.command('search <keyword>').action(async (_, keyword) => {
+  ctx.command('search <keyword:text>').action(async (_, keyword) => {
     let res = await doTypeSearch(config, {
       search_type: SearchType.video,
       keyword,

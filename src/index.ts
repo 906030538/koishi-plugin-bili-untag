@@ -5,7 +5,7 @@ import { db } from './model'
 import { re_calc, spider } from './spider'
 import { subscribe } from './subscribe'
 import { rule } from './rule'
-import { feed } from './push'
+import { clear, feed } from './push'
 
 export const name = 'bili-untag'
 
@@ -29,6 +29,7 @@ export function apply(ctx: Context, config: Config) {
     ctx.command('spider').action(() => spider(ctx, config))
     // ctx.cron('0 0-2,9-23 * * *', async () => push(ctx))
     ctx.command('feed').action(async ({ session }) => await feed(ctx, session))
+    ctx.command('feed.clear').action(async ({ session }) => await clear(ctx, session))
   })
 
   ctx.command('search <keyword:text>').action(async (_, keyword) => {

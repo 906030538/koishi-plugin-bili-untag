@@ -74,3 +74,15 @@ export async function push(ctx: Context): Promise<string | void> {
     if (anymsg) return '推送完毕'
     return '没有更新'
 }
+
+export async function clear(ctx: Context, session: Session) {
+    const subs = await get_subscribes(ctx, undefined, session)
+    const ids = subs.map(s => s.id)
+    if (ids.length === 0) return '找不到订阅'
+    const acc = await ctx.database.get('biliuntag_source', r => $.eq(r.stat, SubVideoStat.Accept))
+    console.log(acc)
+    const res = await ctx.database.upsert('biliuntag_source',
+        acc.map(r => ({ sid: r.sid, avid: r.avid, stat: SubVideoStat.Pushed }))
+    )
+    return `清理推送数： ${acc.length}`
+}

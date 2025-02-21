@@ -8,7 +8,7 @@ export function make_msg(v: Video, u: string): string {
         v.bvid + ' | av' + v.id
 }
 
-export async function feed(ctx: Context, session: Session) {
+export async function feed(ctx: Context, session: Session, count = 10) {
     const subs = await get_subscribes(ctx, undefined, session)
     const ids = subs.map(s => s.id)
     if (ids.length === 0) return '找不到订阅'
@@ -25,7 +25,7 @@ export async function feed(ctx: Context, session: Session) {
             $.eq(r.s.avid, r.v.id),
             $.eq(r.v.author, r.u.id),
         ))
-        .limit(10)
+        .limit(count)
         .execute()
     console.log(res)
     const msg = res.map(r => make_msg(r.v, r.u.name)).join('\n\n')

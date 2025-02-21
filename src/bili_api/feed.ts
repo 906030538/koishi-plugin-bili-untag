@@ -1,6 +1,6 @@
-import { h } from "koishi"
-import { tryWbi } from "./util"
-import { Config } from "./config"
+import { h } from 'koishi'
+import { tryWbi } from './util'
+import { Config } from './config'
 
 const rcmdUrl = 'https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd'
 

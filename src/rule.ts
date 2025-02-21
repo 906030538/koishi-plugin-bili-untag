@@ -8,7 +8,7 @@ export async function get_rules(ctx: Context, id: number): Promise<Array<Rule>> 
 function rule2msg(rule: Rule): string {
     const text = (rule.type === RuleType.Date)
         ? new Date(Number(rule.matcher[0])).toLocaleString('zh-CN')
-        : rule.matcher.join(",")
+        : rule.matcher.join(',')
     return `(${rule.id}:${rule.action}) ${text}`
 }
 

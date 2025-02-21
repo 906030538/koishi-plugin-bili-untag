@@ -1,6 +1,6 @@
-import { $, Context, h, Session } from "koishi";
-import { get_subscribes } from "./subscribe";
-import { SubVideoStat, Video, User } from "./model";
+import { $, Context, h, Session } from 'koishi'
+import { get_subscribes } from './subscribe'
+import { SubVideoStat, Video } from './model'
 
 export function make_msg(v: Video, u: string): string {
     return h('img', { src: v.pic }) + '\n' +

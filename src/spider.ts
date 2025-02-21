@@ -1,23 +1,21 @@
-import { $, Context } from "koishi"
-import { Config } from "."
-import { doSearch, doTypeSearch, SearchOrder, SearchType } from "./bili_api/search"
-import { SubVideoStat, User, Video } from "./model"
-import { from_search } from './convert'
-import { getFeed } from "./bili_api/feed"
-import { feed2Video } from "./convert"
-import { get_subscribes } from "./subscribe"
-import { Filter } from "./rule"
+import { $, Context } from 'koishi'
+import { doSearch, doTypeSearch, SearchOrder, SearchType } from './bili_api/search'
+import { getFeed } from './bili_api/feed'
+import { remove_cdn_domain } from './bili_api/util'
+import { Config } from '.'
+import { SubVideoStat, User, Video } from './model'
+import { from_search, feed2Video } from './convert'
+import { get_subscribes } from './subscribe'
+import { Filter } from './rule'
 
 async function update_user(ctx: Context, u: User) {
-    const s = u.face.indexOf('.hdslb.com/')
-    if (~s) u.face = u.face.slice(s + 10)
     const users = await ctx.database
         .select('biliuntag_user')
         .where(r => $.eq(r.id, u.id))
         .orderBy('time', 'desc')
         .execute()
     const old = users[0]
-    if (!old || old.face !== u.face || old.name !== u.name) {
+    if (!old || old.face !== remove_cdn_domain(u.face) || old.name !== u.name) {
         await ctx.database.create('biliuntag_user', u)
     }
 }

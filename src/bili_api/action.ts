@@ -1,5 +1,5 @@
-import { Config } from "./config"
-import { doRequest } from "./util"
+import { Config } from './config'
+import { doRequest } from './util'
 
 const dealUrl = 'https://api.bilibili.com/medialist/gateway/coll/resource/deal'
 

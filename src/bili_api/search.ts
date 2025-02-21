@@ -1,6 +1,6 @@
-import { h } from "koishi"
-import { tryWbi } from "./util"
-import { Config } from "./config"
+import { h } from 'koishi'
+import { tryWbi } from './util'
+import { Config } from './config'
 
 export enum SearchType {
     video = 'video',                    // 视频

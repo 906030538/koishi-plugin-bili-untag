@@ -1,5 +1,6 @@
 import md5 from 'md5'
 import { Config } from './config'
+import { Random } from 'koishi'
 
 const mixinKeyEncTab: number[] = [
     46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35,
@@ -146,4 +147,21 @@ export async function tryWbi<T>(config: Config, url: string, param: Object): Pro
         throw json_res.message
     }
     return json_res.data
+}
+
+export function remove_cdn_domain(u: string): string {
+    const s = u.indexOf('.hdslb.com/')
+    if (~s) u = u.slice(s + 10)
+    return u
+}
+
+const cdn_domains = ['i0.hdslb.com', 'i1.hdslb.com', 'i2.hdslb.com']
+
+export function add_cdn_domain(u: string): string {
+    const s = u.indexOf('.hdslb.com/')
+    if (~s) return u
+    const r = new Random()
+    let prefix = 'http://' + r.pick(cdn_domains)
+    if (!u.startsWith('/')) prefix += '/'
+    return prefix + u
 }

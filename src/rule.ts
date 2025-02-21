@@ -12,6 +12,11 @@ function rule2msg(rule: Rule): string {
     return `(${rule.id}:${rule.action}) ${text}`
 }
 
+function normalize_date(input: string): string {
+    if (!isNaN(Number(input))) return input
+    return Date.parse(input).toString()
+}
+
 export async function rule(ctx: Context) {
     ctx.command('rule.new <sid:number> <source:number> [keyword:text]')
         .option('type', '-t <type>')
@@ -45,6 +50,8 @@ export async function rule(ctx: Context) {
                     break
                 case 'date':
                     type = RuleType.Date
+                    if (matcher.length > 2) return '日期规则只允许上下界两个值'
+                    matcher = matcher.map(normalize_date)
                     break
                 case 'area':
                     type = RuleType.Area
@@ -86,11 +93,18 @@ export async function rule(ctx: Context) {
                 }
             } else if (options.keyword) {
                 update.matcher = options.keyword.split(',')
+                const old = await ctx.database.get('biliuntag_rule', rid)
+                if (old.length != 1) return '找不到规则id'
+                if (old[0].type == RuleType.Date) {
+                    if (update.matcher.length > 2) return '日期规则只允许上下界两个值'
+                    update.matcher = update.matcher.map(normalize_date)
+                }
             } else if (options.append) {
                 const old = await ctx.database.get('biliuntag_rule', rid)
                 if (old.length != 1) return '找不到规则id'
                 update.matcher = old[0].matcher
-                update.matcher.push(options.append)
+                if (update.matcher.length > 1) return '日期规则只允许上下界两个值'
+                update.matcher.push(normalize_date(options.append))
             }
             if (options.source) {
                 update.action = options.source
@@ -130,7 +144,8 @@ export class Filter {
                     }
                     break
                 case RuleType.Desc:
-                    if (video.description) for (let m of rule.matcher) {
+                    if (!video.description) break
+                    for (let m of rule.matcher) {
                         if (video.description.includes(m)) {
                             matched = true
                             break
@@ -146,7 +161,8 @@ export class Filter {
                     }
                     break
                 case RuleType.Author:
-                    if (user) for (let m of rule.matcher) {
+                    if (!user) break
+                    for (let m of rule.matcher) {
                         if (user.name.includes(m)) {
                             matched = true
                             break
@@ -154,12 +170,16 @@ export class Filter {
                     }
                     break
                 case RuleType.Date:
-                    if (typeof video.pubdate === 'number' && video.pubdate > Number(rule.matcher[0])) {
-                        matched = true
+                    if (typeof video.pubdate !== 'number') break
+                    let [start, end] = rule.matcher.map(Number)
+                    matched = true
+                    if (start && video.pubdate < start || end && video.pubdate >= end) {
+                        matched = false
                         break
                     }
                     break
                 case RuleType.Area:
+                    if (!video.area) break
                     for (let m of rule.matcher) {
                         if (video.area === Number(m)) {
                             matched = true
@@ -174,7 +194,7 @@ export class Filter {
                             matched = true
                             break
                         }
-                        if (!matched) for (let tag of video.tag) {
+                        for (let tag of video.tag) {
                             if (r.exec(tag)) {
                                 matched = true
                                 break

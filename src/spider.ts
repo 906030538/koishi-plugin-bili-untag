@@ -68,3 +68,39 @@ async function spider_work(ctx: Context, config: Config, keyword: string, filter
         await insert_video(ctx, v, u, filter)
     })
 }
+
+export async function re_calc(ctx: Context): Promise<string> {
+    const subs = await get_subscribes(ctx)
+    let count = 0
+    for (const sub of subs) {
+        const filter = await Filter.new(ctx, sub.id)
+        const res = await ctx.database.join({
+            v: 'biliuntag_video',
+            u: ctx.database
+                .select('biliuntag_user')
+                .groupBy('id', { time: r => $.max(r.time), name: 'name', face: 'face' }),
+            c: 'biliuntag_source',
+        },
+            r => $.and($.eq(r.c.avid, r.v.id), $.eq(r.v.author, r.u.id)),
+            { v: false, u: false, c: true })
+            .where(r => $.ignoreNull($.and(
+                $.eq(r.c.sid, sub.id),
+                $.or($.ne(r.c.stat, SubVideoStat.Reject), $.ne(r.c.stat, SubVideoStat.Pushed)))
+            ))
+            .execute()
+        count += res.length
+        res.forEach(r => {
+            const source = filter.calc(r.v, r.u)
+            let stat = SubVideoStat.Wait
+            if (source <= 0) stat = SubVideoStat.Reject
+            if (source > 100) stat = SubVideoStat.Accept
+            ctx.database.upsert('biliuntag_source', [{
+                sid: filter.sid,
+                avid: r.v.id,
+                source,
+                stat
+            }])
+        })
+    }
+    return `刷新得分完成，数量: ${count}`
+}

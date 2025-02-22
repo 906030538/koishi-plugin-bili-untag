@@ -15,7 +15,8 @@ async function update_user(ctx: Context, u: User) {
         .orderBy('time', 'desc')
         .execute()
     const old = users[0]
-    if (!old || old.face !== remove_cdn_domain(u.face) || old.name !== u.name) {
+    u.face = remove_cdn_domain(u.face)
+    if (!old || old.face !== u.face || old.name !== u.name) {
         await ctx.database.create('biliuntag_user', u)
     }
 }
@@ -27,6 +28,17 @@ async function insert_video(ctx: Context, video: Video, user: User, filter: Filt
     if (source > 100) stat = SubVideoStat.Accept
     await update_user(ctx, user)
     await ctx.database.upsert('biliuntag_video', [video])
+    const s = await ctx.database.get('biliuntag_source', { sid: filter.sid, avid: video.id })
+    if (s.length === 1) {
+        switch (s[0].stat) {
+            case SubVideoStat.Accept:
+            case SubVideoStat.Wait:
+                if (stat !== s[0].stat) break
+            default:
+                // 避免覆盖
+                return
+        }
+    }
     await ctx.database.upsert('biliuntag_source', [{
         sid: filter.sid,
         avid: video.id,

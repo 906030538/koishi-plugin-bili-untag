@@ -4,7 +4,8 @@ import { Subscribe, SubVideoStat, Video } from './model'
 
 export function make_msg(v: Video, u: string): string {
     return h('img', { src: v.pic }) + '\n' +
-        v.title + ' | ' + v.pubdate.toLocaleString('zh-CN') + ' | UP：' + u + '\n' +
+        v.pubdate.toLocaleString('zh-CN') + ' | ' + u + '\n' +
+        v.title + '\n' +
         v.bvid + ' | av' + v.id
 }
 
@@ -29,7 +30,6 @@ export async function feed(ctx: Context, session: Session, count = 10, wait = fa
         ))
         .limit(count)
         .execute()
-    console.log(res)
     const msg = res.map(r => make_msg(r.v, r.u.name)).join('\n\n')
     if (msg) {
         ctx.database.upsert('biliuntag_source', res.map(r => ({
@@ -62,7 +62,6 @@ export async function peek(ctx: Context, session: Session, wait = false) {
             $.eq(r.v.author, r.u.id),
         ))
         .execute()
-    console.log(res)
     const msg = res.map(r => make_msg(r.v, r.u.name)).join('\n\n')
     if (msg) return msg
     return '没有更新'
@@ -79,7 +78,6 @@ export async function clear(ctx: Context, session: Session, sid?: number) {
     const ids = subs.map(s => s.id)
     const acc = await ctx.database.get('biliuntag_source',
         r => $.and($.in(r.sid, ids), $.eq(r.stat, SubVideoStat.Accept)))
-    console.log(acc)
     const res = await ctx.database.upsert('biliuntag_source',
         acc.map(r => ({ sid: r.sid, avid: r.avid, stat: SubVideoStat.Pushed }))
     )
@@ -148,7 +146,6 @@ export async function push(ctx: Context): Promise<string | void> {
             ))
             .limit(10)
             .execute()
-        console.log(res)
         const msg = res.map(r => make_msg(r.v, r.u.name)).join('\n\n')
         if (msg) {
             ctx.database.upsert('biliuntag_source', res.map(r => ({

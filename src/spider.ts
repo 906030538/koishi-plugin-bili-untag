@@ -24,7 +24,7 @@ async function update_user(ctx: Context, u: User) {
 async function insert_video(ctx: Context, video: Video, user: User, filter: Filter) {
     const source = filter.calc(video, user)
     let stat = SubVideoStat.Wait
-    if (source <= 0) return // Reject
+    if (source <= 50) return // Reject
     if (source > 100) stat = SubVideoStat.Accept
     await update_user(ctx, user)
     await ctx.database.upsert('biliuntag_video', [video])
@@ -39,6 +39,7 @@ async function insert_video(ctx: Context, video: Video, user: User, filter: Filt
                 return
         }
     }
+    // TODO: add fav, create fav
     await ctx.database.upsert('biliuntag_source', [{
         sid: filter.sid,
         avid: video.id,
@@ -86,33 +87,38 @@ export async function re_calc(ctx: Context): Promise<string> {
     let count = 0
     for (const sub of subs) {
         const filter = await Filter.new(ctx, sub.id)
-        const res = await ctx.database.join({
+        const videos = await ctx.database.join({
             v: 'biliuntag_video',
             u: ctx.database
                 .select('biliuntag_user')
                 .groupBy('id', { time: r => $.max(r.time), name: 'name', face: 'face' }),
-            c: 'biliuntag_source',
         },
-            r => $.and($.eq(r.c.avid, r.v.id), $.eq(r.v.author, r.u.id)),
-            { v: false, u: false, c: true })
-            .where(r => $.ignoreNull($.and(
-                $.eq(r.c.sid, sub.id),
-                $.or($.ne(r.c.stat, SubVideoStat.Reject), $.ne(r.c.stat, SubVideoStat.Pushed)))
-            ))
+            r => $.and($.eq(r.v.author, r.u.id)))
             .execute()
-        count += res.length
-        res.forEach(r => {
+        const avids = videos.map(r => r.v.id)
+        const res = await ctx.database.get('biliuntag_source', r => $.and(
+            $.eq(r.sid, sub.id),
+            $.in(r.avid, avids)
+        ))
+        const ss = Object.fromEntries(res.map(s => [s.avid, { source: s.source, stat: s.stat }]))
+        let s = []
+        for (const r of videos) {
+            let olds = ss[r.v.id]
+            if (olds) {
+                if (olds.stat === SubVideoStat.Pushed) continue
+                // manuly Reject
+                if (olds.stat === SubVideoStat.Reject && olds.source > 50) continue
+            }
             const source = filter.calc(r.v, r.u)
             let stat = SubVideoStat.Wait
-            if (source <= 0) stat = SubVideoStat.Reject
+            if (source <= 50) stat = SubVideoStat.Reject
             if (source > 100) stat = SubVideoStat.Accept
-            ctx.database.upsert('biliuntag_source', [{
-                sid: filter.sid,
-                avid: r.v.id,
-                source,
-                stat
-            }])
-        })
+            console.log(r.v.id, r.v.title, source)
+            if (olds && source === olds.source && stat === olds.stat) continue
+            s.push({ sid: sub.id, avid: r.v.id, source, stat })
+        }
+        count += s.length
+        ctx.database.upsert('biliuntag_source', s)
     }
     return `刷新得分完成，数量: ${count}`
 }

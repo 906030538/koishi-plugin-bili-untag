@@ -95,7 +95,7 @@ export async function rule(ctx: Context) {
                 update.matcher = options.keyword.split(',')
                 const old = await ctx.database.get('biliuntag_rule', rid)
                 if (old.length != 1) return '找不到规则id'
-                if (old[0].type == RuleType.Date) {
+                if (old[0].type === RuleType.Date) {
                     if (update.matcher.length > 2) return '日期规则只允许上下界两个值'
                     update.matcher = update.matcher.map(normalize_date)
                 }
@@ -103,7 +103,9 @@ export async function rule(ctx: Context) {
                 const old = await ctx.database.get('biliuntag_rule', rid)
                 if (old.length != 1) return '找不到规则id'
                 update.matcher = old[0].matcher
-                if (update.matcher.length > 1) return '日期规则只允许上下界两个值'
+                if (old[0].type === RuleType.Date && update.matcher.length > 1) {
+                    return '日期规则只允许上下界两个值'
+                }
                 update.matcher.push(normalize_date(options.append))
             }
             if (options.source) {

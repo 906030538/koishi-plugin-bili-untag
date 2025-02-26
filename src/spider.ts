@@ -8,7 +8,7 @@ import { from_search, feed2Video } from './convert'
 import { get_subscribes } from './subscribe'
 import { Filter } from './rule'
 
-async function update_user(ctx: Context, u: User) {
+export async function update_user(ctx: Context, u: User) {
     const users = await ctx.database
         .select('biliuntag_user')
         .where(r => $.eq(r.id, u.id))

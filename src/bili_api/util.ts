@@ -165,3 +165,11 @@ export function add_cdn_domain(u: string): string {
     if (!u.startsWith('/')) prefix += '/'
     return prefix + u
 }
+
+export interface PageFlatIter<T> {
+    page: number
+    content: Array<T>
+    finished: boolean
+
+    next: () => Promise<T | void>
+}

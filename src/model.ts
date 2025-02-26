@@ -5,6 +5,7 @@ declare module 'koishi' {
         biliuntag_user: User,
         biliuntag_video: Video,
         biliuntag_subscribe: Subscribe,
+        biliuntag_favs: Favs,
         biliuntag_rule: Rule,
         biliuntag_source: Source,
     }
@@ -30,7 +31,7 @@ export interface Video {
     pic: string,                // 封面url
     duration: number,           // 长度
     view: number,               // 播放数
-    like: number,               // 获赞数
+    like?: number,               // 获赞数
     coin?: number,              // 投币数
     favorite?: number,          // 收藏数
     reply?: number,             // 评论数
@@ -81,6 +82,11 @@ export interface Source {
     stat: SubVideoStat,
 }
 
+export interface Favs {
+    mid: number,
+    sid: number,
+}
+
 export function db(ctx: Context) {
     ctx.model.extend('biliuntag_user', {
         id: 'unsigned',
@@ -105,7 +111,7 @@ export function db(ctx: Context) {
         pic: 'string',
         duration: 'integer',
         view: 'integer',
-        like: 'integer',
+        like: { type: 'integer', nullable: true, initial: -1 },
         coin: { type: 'integer', nullable: true, initial: -1 },
         favorite: { type: 'integer', nullable: true, initial: -1 },
         reply: { type: 'integer', nullable: true, initial: -1 },
@@ -117,6 +123,15 @@ export function db(ctx: Context) {
     }, {
         foreign: {
             author: ['biliuntag_user', 'id']
+        }
+    })
+    ctx.model.extend('biliuntag_favs', {
+        sid: 'unsigned',
+        mid: 'integer',
+    }, {
+        primary: ['sid', 'mid'],
+        foreign: {
+            sid: ['biliuntag_subscribe', 'id'],
         }
     })
     ctx.model.extend('biliuntag_subscribe', {

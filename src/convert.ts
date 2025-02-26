@@ -1,3 +1,4 @@
+import { Media } from './bili_api/fav';
 import { Item, Owner, } from './bili_api/feed';
 import { Video as SearchVideo } from './bili_api/search';
 import { Video, User } from './model';
@@ -60,10 +61,29 @@ export function feed2Video(item: Item): [User, Video] {
         pubdate: item.pubdate * 1000,
         title: item.title,
         pic: item.pic,
-        duration: item.duraion,
+        duration: item.duration,
         view: item.stat.view,
         like: item.stat.like,
         danmaku: item.stat.danmaku,
+    }
+    return [u, v]
+}
+
+export function fav2Video(media: Media): [User, Video] {
+    const u: User = owner2user(media.upper)
+    const v: Video = {
+        id: media.id,
+        bvid: media.bvid,
+        author: u.id,
+        pubdate: media.pubtime * 1000,
+        senddate: media.ctime * 1000,
+        title: media.title,
+        description: media.intro,
+        pic: media.cover,
+        duration: media.duration,
+        view: media.cnt_info.play,
+        favorite: media.cnt_info.collect,
+        danmaku: media.cnt_info.danmaku,
     }
     return [u, v]
 }

@@ -42,7 +42,7 @@ export interface Item {
     cid: number,
     dislike_switch: number,
     dislike_switch_pc: number,
-    duraion: number,
+    duration: number,
     enable_vt: number,
     goto: 'av' | 'ogv' | 'live',
     id: number,

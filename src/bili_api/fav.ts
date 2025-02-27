@@ -85,7 +85,7 @@ export async function get_favs(config: Config, media_id: number, page = 1): Prom
 export class FavListIter implements PageFlatIter<Media> {
     config: Config
     media_id: number
-    page = 1
+    page = 0
     content: Array<Media> = []
     finished = false
 
@@ -97,7 +97,8 @@ export class FavListIter implements PageFlatIter<Media> {
         this.page += 1
         const param: ListRequest = {
             media_id: this.media_id,
-            ps: this.page,
+            ps: 20,
+            pn: this.page,
             platform: 'web',
         };
         const res: ListResponse = await doRequest(this.config, FAV_LIST_URL, param)
@@ -116,7 +117,9 @@ export class FavListIter implements PageFlatIter<Media> {
     all = async (f: (m: Media) => Promise<void>): Promise<void> => {
         while (!this.finished || this.content.length) {
             await this.more()
-            this.content.forEach(f)
+            for (const media of this.content) {
+                await f(media)
+            }
         }
     }
 }

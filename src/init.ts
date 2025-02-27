@@ -46,15 +46,21 @@ async function update_fav(
     if (!fav) return '找不到任何收藏夹'
     let count = 0
     for (const f of fav) {
-        let iter = new FavListIter(config, f.mid)
-        await iter.all(async m => {
+        let avids = []
+        await new FavListIter(config, f.mid).all(async m => {
             const [u, v] = fav2Video(m)
             await update_user(session.app, u)
             await session.app.database.upsert('biliuntag_video', [v])
-            const s = { sid: f.sid, avid: v.id, source: 0, stat: SubVideoStat.Pushed }
-            await session.app.database.upsert('biliuntag_source', [s])
+            avids.push(v.id)
             count += 1
         })
+        const sources = await session.app.database.select('biliuntag_source')
+            .where(r => $.and($.eq(r.sid, f.sid), $.in(r.avid, avids), $.ne(r.stat, SubVideoStat.Wait)))
+            .project('avid')
+            .execute()
+        const s = avids.filter(id => !sources.includes(id))
+            .map(id => ({ sid: f.sid, avid: id, stat: SubVideoStat.Accept }))
+        await session.app.database.upsert('biliuntag_source', s)
     }
     return `更新收藏夹完成: ${count}`
 }

@@ -104,15 +104,15 @@ export async function re_calc(ctx: Context): Promise<string> {
         let s = []
         for (const r of videos) {
             let olds = ss[r.v.id]
-            if (olds) {
-                if (olds.stat === SubVideoStat.Pushed) continue
-                // manuly Reject
-                if (olds.stat === SubVideoStat.Reject && olds.source > 50) continue
-            }
             const source = filter.calc(r.v, r.u)
             let stat = SubVideoStat.Wait
             if (source <= 50) stat = SubVideoStat.Reject
             if (source > 100) stat = SubVideoStat.Accept
+            if (olds) {
+                // manuly Reject
+                if (olds.stat === SubVideoStat.Pushed
+                    || olds.stat === SubVideoStat.Reject && olds.source > 50) stat = olds.stat
+            }
             console.log(r.v.id, r.v.title, source)
             if (olds && source === olds.source && stat === olds.stat) continue
             s.push({ sid: sub.id, avid: r.v.id, source, stat })

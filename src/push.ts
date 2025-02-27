@@ -62,7 +62,7 @@ export async function peek(ctx: Context, session: Session, wait = false) {
             $.eq(r.v.author, r.u.id),
         ))
         .execute()
-    const msg = res.map(r => r.s.source + ' | ' + make_msg(r.v, r.u.name)).join('\n\n')
+    const msg = res.map(r => make_msg(r.v, r.u.name) + ' | (' + r.s.source + ')').join('\n\n')
     if (msg) return msg
     return '没有更新'
 }

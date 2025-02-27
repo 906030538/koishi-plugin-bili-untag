@@ -2,7 +2,13 @@ import { $, Context } from "koishi";
 import { SubVideoStat } from "./model";
 import { make_msg } from "./push";
 
-export async function find(ctx: Context, keyword: string, limit = 3) {
+export function find_command(ctx: Context) {
+    ctx.command('find <keyword:text>')
+        .option('count', '-n <count:number>')
+        .action(async ({ options }, keyword) => await find(ctx, keyword, options.count))
+}
+
+async function find(ctx: Context, keyword: string, limit = 3) {
     if (!keyword) return '请输入关键字'
     let found = []
     const r = await ctx.database.join(

@@ -6,7 +6,7 @@ import { re_calc, spider } from './spider'
 import { subscribe } from './subscribe'
 import { rule } from './rule'
 import { feed_command } from './push'
-import { find } from './find'
+import { find_command } from './find'
 import { fav_commands } from './init'
 
 export const name = 'bili-untag'
@@ -24,7 +24,7 @@ export function apply(ctx: Context, config: Config) {
     subscribe(ctx)
     rule(ctx)
     ctx.command('recalc').action(async _ => await re_calc(ctx))
-    ctx.command('find <keyword:text>').action(async (_, keyword) => await find(ctx, keyword))
+    find_command(ctx)
     fav_commands(ctx, config)
   })
   ctx.inject(['cron', 'database'], ctx => {

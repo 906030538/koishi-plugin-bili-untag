@@ -4,9 +4,10 @@ import { getFeed } from './bili_api/feed'
 import { remove_cdn_domain } from './bili_api/util'
 import { Config } from '.'
 import { SubVideoStat, User, Video } from './model'
-import { from_search, feed2Video } from './convert'
+import { from_search, feed2Video, fav2Video } from './convert'
 import { get_subscribes } from './subscribe'
 import { Filter } from './rule'
+import { get_favs } from './bili_api/fav'
 
 export async function update_user(ctx: Context, u: User) {
     const users = await ctx.database
@@ -21,11 +22,11 @@ export async function update_user(ctx: Context, u: User) {
     }
 }
 
-async function insert_video(ctx: Context, video: Video, user: User, filter: Filter) {
+async function insert_video(ctx: Context, video: Video, user: User, filter: Filter, fav = false) {
     const source = filter.calc(video, user)
     let stat = SubVideoStat.Wait
-    if (source <= 50) return // Reject
-    if (source > 100) stat = SubVideoStat.Accept
+    if (fav || source > 100) stat = SubVideoStat.Accept
+    else if (source <= 50) return // Reject
     await update_user(ctx, user)
     await ctx.database.upsert('biliuntag_video', [video])
     const s = await ctx.database.get('biliuntag_source', { sid: filter.sid, avid: video.id })
@@ -80,6 +81,15 @@ async function spider_work(ctx: Context, config: Config, keyword: string, filter
         const [u, v] = from_search(r)
         await insert_video(ctx, v, u, filter)
     })
+    // update last fav
+    const fav = (await ctx.database.get('biliuntag_favs', r => $.eq(r.sid, filter.sid))).pop()
+    if (fav) {
+        const medias = await get_favs(config, fav.mid)
+        medias.forEach(async m => {
+            const [u, v] = fav2Video(m)
+            await insert_video(ctx, v, u, filter, true)
+        })
+    }
 }
 
 export async function re_calc(ctx: Context): Promise<string> {

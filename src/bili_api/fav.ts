@@ -73,13 +73,15 @@ interface ListResponse {
 
 const FAV_LIST_URL = 'https://api.bilibili.com/x/v3/fav/resource/list'
 
-export async function get_favs(config: Config, media_id: number, page = 1): Promise<ListResponse> {
+export async function get_favs(config: Config, media_id: number, page = 1): Promise<Array<Media>> {
     const param: ListRequest = {
         media_id,
-        ps: page,
+        ps: 20,
+        pn: page,
         platform: 'web',
     };
-    return await doRequest(config, FAV_LIST_URL, param)
+    const res: ListResponse = await doRequest(config, FAV_LIST_URL, param)
+    return res.medias.filter(m => m.attr === MediaAttr.Normal)
 }
 
 export class FavListIter implements PageFlatIter<Media> {

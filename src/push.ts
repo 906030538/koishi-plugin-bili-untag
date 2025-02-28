@@ -77,7 +77,7 @@ export async function clear(ctx: Context, session: Session, sid?: number) {
     if (subs.length === 0) return '找不到订阅'
     const ids = subs.map(s => s.id)
     const acc = await ctx.database.get('biliuntag_source',
-        r => $.and($.in(r.sid, ids), $.eq(r.stat, SubVideoStat.Accept)))
+        r => $.and($.in(r.sid, ids), $.in(r.stat, [SubVideoStat.Accept, SubVideoStat.Wait])))
     const res = await ctx.database.upsert('biliuntag_source',
         acc.map(r => ({ sid: r.sid, avid: r.avid, stat: SubVideoStat.Pushed }))
     )

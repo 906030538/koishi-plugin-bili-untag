@@ -3,7 +3,7 @@ import { doSearch, doTypeSearch, SearchOrder, SearchType } from './bili_api/sear
 import { getFeed } from './bili_api/feed'
 import { remove_cdn_domain } from './bili_api/util'
 import { Config } from '.'
-import { SubVideoStat, User, Video } from './model'
+import { Source, SubVideoStat, User, Video } from './model'
 import { from_search, feed2Video, fav2Video } from './convert'
 import { get_subscribes } from './subscribe'
 import { Filter } from './rule'
@@ -97,34 +97,30 @@ export async function re_calc(ctx: Context): Promise<string> {
     let count = 0
     for (const sub of subs) {
         const filter = await Filter.new(ctx, sub.id)
-        const videos = await ctx.database.join({
+        const res = await ctx.database.join({
             v: 'biliuntag_video',
             u: ctx.database
                 .select('biliuntag_user')
-                .groupBy('id', { time: r => $.max(r.time), name: 'name', face: 'face' }),
+                .orderBy('time', 'desc')
+                .groupBy('id', { time: 'time', name: 'name', face: 'face' }),
         },
             r => $.and($.eq(r.v.author, r.u.id)))
+            .join('s', ctx.database.select('biliuntag_source'),
+                (r, s) => $.and($.eq(s.avid, r.v.id), $.eq(s.sid, sub.id)), true)
             .execute()
-        const avids = videos.map(r => r.v.id)
-        const res = await ctx.database.get('biliuntag_source', r => $.and(
-            $.eq(r.sid, sub.id),
-            $.in(r.avid, avids)
-        ))
-        const ss = Object.fromEntries(res.map(s => [s.avid, { source: s.source, stat: s.stat }]))
-        let s = []
-        for (const r of videos) {
-            let olds = ss[r.v.id]
+        let s: Array<Source> = []
+        for (const r of res) {
             const source = filter.calc(r.v, r.u)
             let stat = SubVideoStat.Wait
             if (source <= 50) stat = SubVideoStat.Reject
             if (source > 100) stat = SubVideoStat.Accept
-            if (olds) {
+            if (r.s) {
                 // manuly Reject
-                if (olds.stat === SubVideoStat.Pushed
-                    || olds.stat === SubVideoStat.Reject && olds.source > 50) stat = olds.stat
+                if (r.s.stat === SubVideoStat.Pushed ||
+                    r.s.stat === SubVideoStat.Reject && r.s.source > 50) stat = r.s.stat
             }
-            console.log(r.v.id, r.v.title, source)
-            if (olds && source === olds.source && stat === olds.stat) continue
+            if (r.s && source === r.s.source && stat === r.s.stat) continue
+            console.log(r.v.id, r.v.title, source, r.u.name, stat)
             s.push({ sid: sub.id, avid: r.v.id, source, stat })
         }
         count += s.length

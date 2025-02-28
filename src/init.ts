@@ -1,9 +1,9 @@
-import { $, Context, Session } from "koishi";
-import { FavListIter } from "./bili_api/fav";
-import { Config } from ".";
-import { fav2Video } from "./convert";
-import { update_user } from "./spider";
-import { Favs, SubVideoStat } from "./model";
+import { $, Context, Session } from 'koishi'
+import { FavListIter } from './bili_api/fav'
+import { Config } from '.'
+import { fav2Video } from './convert'
+import { update_user } from './spider'
+import { Favs, SubVideoStat } from './model'
 
 async function new_fav(session: Session, sid: number, mid: number): Promise<string> {
     const ret = await session.app.database.create('biliuntag_favs', {

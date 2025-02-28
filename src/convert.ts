@@ -1,7 +1,7 @@
-import { Media } from './bili_api/fav';
-import { Item, Owner, } from './bili_api/feed';
-import { Video as SearchVideo } from './bili_api/search';
-import { Video, User } from './model';
+import { Media } from './bili_api/fav'
+import { Item, Owner, } from './bili_api/feed'
+import { Video as SearchVideo } from './bili_api/search'
+import { Video, User } from './model'
 
 export function duration_str2sec(s: string): number {
     let d = s.split(':', 2).map(i => parseInt(i))

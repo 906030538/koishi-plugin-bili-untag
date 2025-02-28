@@ -1,6 +1,6 @@
-import { $, Context } from "koishi";
-import { SubVideoStat } from "./model";
-import { make_msg } from "./push";
+import { $, Context } from 'koishi'
+import { SubVideoStat } from './model'
+import { make_msg } from './push'
 
 export function find_command(ctx: Context) {
     ctx.command('find <keyword:text>')

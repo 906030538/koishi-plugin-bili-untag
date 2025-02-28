@@ -44,7 +44,7 @@ async function getWbiKeys(config: Config, force: boolean): Promise<string> {
             Referer: 'https://www.bilibili.com/'//对于直接浏览器调用可能不适用
         }
     })
-    res.headers.get('Date');
+    res.headers.get('Date')
     const data: Nav = await res.json()
     const img_key = get_token(data.data.wbi_img.img_url)
     const sub_key = get_token(data.data.wbi_img.sub_url)

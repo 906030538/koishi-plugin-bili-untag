@@ -32,7 +32,7 @@ export interface CntInfo {
 }
 
 export interface Ugc {
-    first_cid: number;
+    first_cid: number
 }
 
 enum MediaAttr {
@@ -42,26 +42,26 @@ enum MediaAttr {
 }
 
 export interface Media {
-    id: number;
-    type: number;
-    title: string;
-    cover: string;
-    intro: string;
-    page: number;
-    duration: number;
-    upper: Owner;
-    attr: MediaAttr;
-    cnt_info: CntInfo;
-    link: string;
-    ctime: number;      // 投稿时间
-    pubtime: number;    // 发布时间
-    fav_time: number;   // 收藏时间
-    bv_id: string;
-    bvid: string;
-    season: null;
-    ogv: null;
-    ugc: Ugc;
-    media_list_link: string;
+    id: number
+    type: number
+    title: string
+    cover: string
+    intro: string
+    page: number
+    duration: number
+    upper: Owner
+    attr: MediaAttr
+    cnt_info: CntInfo
+    link: string
+    ctime: number      // 投稿时间
+    pubtime: number    // 发布时间
+    fav_time: number   // 收藏时间
+    bv_id: string
+    bvid: string
+    season: null
+    ogv: null
+    ugc: Ugc
+    media_list_link: string
 }
 
 interface ListResponse {
@@ -79,7 +79,7 @@ export async function get_favs(config: Config, media_id: number, page = 1): Prom
         ps: 20,
         pn: page,
         platform: 'web',
-    };
+    }
     const res: ListResponse = await doRequest(config, FAV_LIST_URL, param)
     return res.medias.filter(m => m.attr === MediaAttr.Normal)
 }
@@ -102,7 +102,7 @@ export class FavListIter implements PageFlatIter<Media> {
             ps: 20,
             pn: this.page,
             platform: 'web',
-        };
+        }
         const res: ListResponse = await doRequest(this.config, FAV_LIST_URL, param)
         if (!res || !res.has_more || !res.medias.length) this.finished = true
         this.content = res?.medias ?? []

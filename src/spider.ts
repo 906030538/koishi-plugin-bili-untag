@@ -22,12 +22,15 @@ export async function update_user(ctx: Context, u: User) {
     }
 }
 
+const REMOVED_COVER = '/bfs/archive/be27fd62c99036dce67efface486fb0a88ffed06.jpg'
+
 async function insert_video(ctx: Context, video: Video, user: User, filter: Filter, fav = false) {
     const source = filter.calc(video, user)
     let stat = SubVideoStat.Wait
     if (fav || source > 100) stat = SubVideoStat.Accept
     else if (source <= 50) return // Reject
     await update_user(ctx, user)
+    if (video.title === '已失效视频' && remove_cdn_domain(video.pic) === REMOVED_COVER) return
     await ctx.database.upsert('biliuntag_video', [video])
     const s = await ctx.database.get('biliuntag_source', { sid: filter.sid, avid: video.id })
     if (s.length === 1) {

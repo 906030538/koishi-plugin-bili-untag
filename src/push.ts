@@ -1,6 +1,6 @@
 import { $, Context, h, Session } from 'koishi'
 import { get_subscribes } from './subscribe'
-import { Subscribe, SubVideoStat, Video } from './model'
+import { Source, Subscribe, SubVideoStat, Video } from './model'
 
 export function make_msg(v: Video, u: string): string {
     return h('img', { src: v.pic }) + '\n' +
@@ -9,27 +9,33 @@ export function make_msg(v: Video, u: string): string {
         v.bvid + ' | av' + v.id
 }
 
+function get_sub_video(ctx: Context, ids: number[], stat: SubVideoStat[], count?: number):
+    Promise<Array<{ v: Video, u: { name: string }, s: Source }>> {
+    let s = ctx.database
+        .join({
+            s: 'biliuntag_source',
+            v: 'biliuntag_video',
+            u: ctx.database
+                .select('biliuntag_user')
+                .orderBy('time', 'desc')
+                .groupBy('id', { name: 'name' })
+        }, r => $.and(
+            $.in(r.s.sid, ids),
+            $.in(r.s.stat, stat),
+            $.eq(r.s.avid, r.v.id),
+            $.eq(r.v.author, r.u.id)
+        ))
+    if (count) s = s.limit(count)
+    return s.execute()
+}
+
 export async function feed(ctx: Context, session: Session, count = 10, wait = false) {
     const subs = await get_subscribes(ctx, undefined, session)
     const ids = subs.map(s => s.id)
     if (ids.length === 0) return '找不到订阅'
     let stat = [SubVideoStat.Accept]
     if (wait) stat.push(SubVideoStat.Wait)
-    let res = await ctx.database
-        .join({
-            s: 'biliuntag_source',
-            v: 'biliuntag_video',
-            u: ctx.database
-                .select('biliuntag_user')
-                .groupBy('id', { time: r => $.max(r.time), name: 'name' })
-        }, r => $.and(
-            $.in(r.s.sid, ids),
-            $.in(r.s.stat, stat),
-            $.eq(r.s.avid, r.v.id),
-            $.eq(r.v.author, r.u.id),
-        ))
-        .limit(count)
-        .execute()
+    let res = await get_sub_video(ctx, ids, stat, count)
     const msg = res.map(r => make_msg(r.v, r.u.name)).join('\n\n')
     if (msg) {
         ctx.database.upsert('biliuntag_source', res.map(r => ({
@@ -48,20 +54,7 @@ export async function peek(ctx: Context, session: Session, wait = false) {
     if (ids.length === 0) return '找不到订阅'
     let stat = [SubVideoStat.Accept, SubVideoStat.Wait]
     if (wait) stat = [SubVideoStat.Wait]
-    let res = await ctx.database
-        .join({
-            s: 'biliuntag_source',
-            v: 'biliuntag_video',
-            u: ctx.database
-                .select('biliuntag_user')
-                .groupBy('id', { time: r => $.max(r.time), name: 'name' })
-        }, r => $.and(
-            $.in(r.s.sid, ids),
-            $.in(r.s.stat, stat),
-            $.eq(r.s.avid, r.v.id),
-            $.eq(r.v.author, r.u.id),
-        ))
-        .execute()
+    let res = await get_sub_video(ctx, ids, stat)
     const msg = res.map(r => make_msg(r.v, r.u.name) + ' | (' + r.s.source + ')').join('\n\n')
     if (msg) return msg
     return '没有更新'
@@ -131,21 +124,7 @@ export async function push(ctx: Context): Promise<string | void> {
     const subs = await get_subscribes(ctx)
     let anymsg = false
     for (const sub of subs) {
-        const res = await ctx.database
-            .join({
-                s: 'biliuntag_source',
-                v: 'biliuntag_video',
-                u: ctx.database
-                    .select('biliuntag_user')
-                    .groupBy('id', { time: r => $.max(r.time), name: 'name' })
-            }, r => $.and(
-                $.eq(r.s.sid, sub.id),
-                $.eq(r.s.stat, SubVideoStat.Accept),
-                $.eq(r.s.avid, r.v.id),
-                $.eq(r.v.author, r.u.id),
-            ))
-            .limit(10)
-            .execute()
+        const res = await get_sub_video(ctx, [sub.id], [SubVideoStat.Accept], 10)
         const msg = res.map(r => make_msg(r.v, r.u.name)).join('\n\n')
         if (msg) {
             ctx.database.upsert('biliuntag_source', res.map(r => ({
@@ -153,7 +132,7 @@ export async function push(ctx: Context): Promise<string | void> {
                 avid: r.s.avid,
                 stat: SubVideoStat.Pushed
             })))
-            ctx.bots[0].broadcast(sub.target, msg)
+            ctx.broadcast(sub.target, msg)
             anymsg = true
         }
     }

@@ -2,7 +2,7 @@ import { $, Context } from 'koishi'
 import { Rule, RuleType, User, Video } from './model'
 
 export async function get_rules(ctx: Context, id: number): Promise<Array<Rule>> {
-    return await ctx.database.get('biliuntag_rule', r => $.eq(r.sid, id))
+    return await ctx.database.get('biliuntag_rule', r => $.eq(r.tid, id))
 }
 
 function rule2msg(rule: Rule): string {
@@ -17,12 +17,12 @@ function normalize_date(input: string): string {
     return Date.parse(input).toString()
 }
 
-export async function rule(ctx: Context) {
-    ctx.command('rule.new <sid:number> <source:number> [keyword:text]')
+export async function rule_command(ctx: Context) {
+    ctx.command('rule.new <tid:number> <source:number> [keyword:text]')
         .option('type', '-t <type>')
         .option('json', '-j <json:text>')
-        .action(async ({ options }, sid, source, keyword) => {
-            if (typeof sid !== 'number') return '缺少订阅id'
+        .action(async ({ options }, tid, source, keyword) => {
+            if (typeof tid !== 'number') return '缺少订阅id'
             if (typeof source !== 'number') return '缺少积分'
             let matcher: Array<string> = []
             if (options.json) {
@@ -65,16 +65,16 @@ export async function rule(ctx: Context) {
                     return '错误的类型，支持的类型有: title,desc,tag,author,date,area,regex,text'
             }
             const rule = await ctx.database.create('biliuntag_rule', {
-                sid,
+                tid,
                 type,
                 matcher,
                 action: source
             })
             return '新规则创建: ' + rule2msg(rule)
         })
-    ctx.command('rule.list <sid:number>').action(async (_, sid) => {
-        if (typeof sid !== 'number') return '缺少订阅id'
-        let rules = await get_rules(ctx, sid)
+    ctx.command('rule.list <tid:number>').action(async (_, tid) => {
+        if (typeof tid !== 'number') return '缺少订阅id'
+        let rules = await get_rules(ctx, tid)
         return rules.map(rule2msg).join('\n')
     })
     ctx.command('rule.update <rid:number>')
@@ -129,7 +129,7 @@ export async function rule(ctx: Context) {
 }
 
 export class Filter {
-    sid: number
+    tid: number
     rules: Array<Rule>
 
     calc = (video: Video, user?: User): number => {
@@ -225,13 +225,13 @@ export class Filter {
         return source
     }
 
-    constructor(sid: number, rules: Array<Rule>) {
-        this.sid = sid
+    constructor(tid: number, rules: Array<Rule>) {
+        this.tid = tid
         this.rules = rules
     }
 
-    static async new(ctx: Context, sid: number): Promise<Filter> {
-        let rules = await get_rules(ctx, sid)
-        return new Filter(sid, rules)
+    static async new(ctx: Context, tid: number): Promise<Filter> {
+        let rules = await get_rules(ctx, tid)
+        return new Filter(tid, rules)
     }
 }

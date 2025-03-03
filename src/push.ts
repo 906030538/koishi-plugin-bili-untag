@@ -1,6 +1,6 @@
 import { $, Context, h, Session } from 'koishi'
 import { get_subscribes } from './subscribe'
-import { Source, Subscribe, SubVideoStat, Video } from './model'
+import { Source, Tenant, SubVideoStat, Video } from './model'
 
 export function make_msg(v: Video, u: string): string {
     return h('img', { src: v.pic }) + '\n' +
@@ -20,7 +20,7 @@ function get_sub_video(ctx: Context, ids: number[], stat: SubVideoStat[], count?
                 .orderBy('time', 'desc')
                 .groupBy('id', { name: 'name' })
         }, r => $.and(
-            $.in(r.s.sid, ids),
+            $.in(r.s.tid, ids),
             $.in(r.s.stat, stat),
             $.eq(r.s.avid, r.v.id),
             $.eq(r.v.author, r.u.id)
@@ -39,7 +39,7 @@ export async function feed(ctx: Context, session: Session, count = 10, wait = fa
     const msg = res.map(r => make_msg(r.v, r.u.name)).join('\n\n')
     if (msg) {
         ctx.database.upsert('biliuntag_source', res.map(r => ({
-            sid: r.s.sid,
+            tid: r.s.tid,
             avid: r.s.avid,
             stat: SubVideoStat.Pushed
         })))
@@ -60,19 +60,19 @@ export async function peek(ctx: Context, session: Session, wait = false) {
     return '没有更新'
 }
 
-export async function clear(ctx: Context, session: Session, sid?: number) {
-    let subs: Subscribe[]
-    if (sid) {
-        subs = await ctx.database.get('biliuntag_subscribe', sid)
+export async function clear(ctx: Context, session: Session, tid?: number) {
+    let subs: Tenant[]
+    if (tid) {
+        subs = await ctx.database.get('biliuntag_tenant', tid)
     } else {
         subs = await get_subscribes(ctx, undefined, session)
     }
     if (subs.length === 0) return '找不到订阅'
     const ids = subs.map(s => s.id)
     const acc = await ctx.database.get('biliuntag_source',
-        r => $.and($.in(r.sid, ids), $.in(r.stat, [SubVideoStat.Accept, SubVideoStat.Wait])))
+        r => $.and($.in(r.tid, ids), $.in(r.stat, [SubVideoStat.Accept, SubVideoStat.Wait])))
     const res = await ctx.database.upsert('biliuntag_source',
-        acc.map(r => ({ sid: r.sid, avid: r.avid, stat: SubVideoStat.Pushed }))
+        acc.map(r => ({ tid: r.tid, avid: r.avid, stat: SubVideoStat.Pushed }))
     )
     return `清理推送数： ${acc.length}`
 }
@@ -91,16 +91,16 @@ export async function update(ctx: Context, session: Session, id: string, accept 
     }
     const subs = await get_subscribes(ctx, undefined, session)
     if (!subs.length) return '找不到订阅'
-    const sid = subs.map(s => s.id)
-    let s: { sid: number, avid: number, stat: SubVideoStat }[]
+    const tid = subs.map(s => s.id)
+    let s: { tid: number, avid: number, stat: SubVideoStat }[]
     const r = await ctx.database.get('biliuntag_source',
-        r => $.and($.eq(r.avid, avid), $.in(r.sid, sid))
+        r => $.and($.eq(r.avid, avid), $.in(r.tid, tid))
     )
     const stat = accept ? SubVideoStat.Accept : SubVideoStat.Reject
     if (r.length) {
-        s = r.map(s => ({ sid: s.sid, avid: s.avid, stat }))
+        s = r.map(s => ({ tid: s.tid, avid: s.avid, stat }))
     } else {
-        s = sid.map(s => ({ sid: s, avid, stat }))
+        s = tid.map(s => ({ tid: s, avid, stat }))
     }
     const res = await ctx.database.upsert('biliuntag_source', s)
     return '已完成'
@@ -116,23 +116,34 @@ export function feed_command(ctx: Context) {
     ctx.command('feed.reject <id>').action(async ({ session }, id) => update(ctx, session, id, false))
     ctx.command('feed.accept <id>').action(async ({ session }, id) => update(ctx, session, id, true))
     ctx.command('feed.clear')
-        .option('sid', '-s <sid:number>')
-        .action(async ({ session, options }) => await clear(ctx, session, options.sid))
+        .option('tid', '-t <tid:number>')
+        .action(async ({ session, options }) => await clear(ctx, session, options.tid))
 }
 
 export async function push(ctx: Context): Promise<string | void> {
-    const subs = await get_subscribes(ctx)
+    const tenants = await ctx.database.join({ t: 'biliuntag_tenant', s: 'biliuntag_subscriber' },
+        r => $.and($.eq(r.t.id, r.s.tid), $.eq(r.s.push, true))
+    ).groupBy('t.id', { sub: r => $.array(r.s) }).execute()
     let anymsg = false
-    for (const sub of subs) {
-        const res = await get_sub_video(ctx, [sub.id], [SubVideoStat.Accept], 10)
-        const msg = res.map(r => make_msg(r.v, r.u.name)).join('\n\n')
-        if (msg) {
+    for (const tenant of tenants) {
+        const res = await get_sub_video(ctx, [tenant.t.id], [SubVideoStat.Accept], 10)
+        if (res) {
+            let pushd = false
+            for (const sub of tenant.sub) {
+                const bot = ctx.bots.find(b => b.platform === sub.platform)
+                if (!bot) continue
+                const msg = res.map(r => make_msg(r.v, r.u.name)).join('\n\n')
+                if (sub.k_channel) bot.sendMessage(sub.k_channel, msg)
+                else if (sub.k_user) bot.sendPrivateMessage(sub.k_user, msg)
+                else continue
+                pushd = true
+            }
+            if (!pushd) continue
             ctx.database.upsert('biliuntag_source', res.map(r => ({
-                sid: r.s.sid,
+                tid: r.s.tid,
                 avid: r.s.avid,
                 stat: SubVideoStat.Pushed
             })))
-            ctx.broadcast(sub.target, msg)
             anymsg = true
         }
     }

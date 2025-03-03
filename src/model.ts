@@ -4,7 +4,8 @@ declare module 'koishi' {
     interface Tables {
         biliuntag_user: User,
         biliuntag_video: Video,
-        biliuntag_subscribe: Subscribe,
+        biliuntag_tenant: Tenant,
+        biliuntag_subscriber: Subscriber,
         biliuntag_favs: Favs,
         biliuntag_rule: Rule,
         biliuntag_source: Source,
@@ -31,7 +32,7 @@ export interface Video {
     pic: string,                // 封面url
     duration: number,           // 长度
     view: number,               // 播放数
-    like?: number,               // 获赞数
+    like?: number,              // 获赞数
     coin?: number,              // 投币数
     favorite?: number,          // 收藏数
     reply?: number,             // 评论数
@@ -42,10 +43,23 @@ export interface Video {
     his_rank?: number,          // 历史最高排行
 }
 
-export interface Subscribe {
+export interface Tenant {
     id: number,
     keyword: string,
     target: Array<string>,
+}
+
+export interface Subscriber {
+    id?: number,
+    tid: number,
+    k_user?: string,
+    k_channel?: string,
+    platform: string,
+    push?: boolean,
+    config?: {
+        send_img?: boolean,
+        send_url?: boolean,
+    },
 }
 
 export enum RuleType {
@@ -62,7 +76,7 @@ export enum RuleType {
 
 export interface Rule {
     id: number,
-    sid: number,
+    tid: number,
     type: RuleType,
     matcher: Array<string>,
     action: number,
@@ -76,7 +90,7 @@ export enum SubVideoStat {
 }
 
 export interface Source {
-    sid: number,
+    tid: number,
     avid: number,
     source: number,
     stat: SubVideoStat,
@@ -84,7 +98,7 @@ export interface Source {
 
 export interface Favs {
     mid: number,
-    sid: number,
+    tid: number,
 }
 
 export function db(ctx: Context) {
@@ -94,7 +108,8 @@ export function db(ctx: Context) {
         name: 'string',
         face: 'string',
     }, {
-        primary: ['id', 'time']
+        primary: ['id', 'time'],
+        indexes: ['id'],
     })
     ctx.model.extend('biliuntag_video', {
         // 各字段的类型声明
@@ -126,42 +141,59 @@ export function db(ctx: Context) {
         }
     })
     ctx.model.extend('biliuntag_favs', {
-        sid: 'unsigned',
+        tid: 'unsigned',
         mid: 'integer',
     }, {
-        primary: ['sid', 'mid'],
+        primary: ['tid', 'mid'],
         foreign: {
-            sid: ['biliuntag_subscribe', 'id'],
+            tid: ['biliuntag_tenant', 'id'],
         }
     })
-    ctx.model.extend('biliuntag_subscribe', {
+    ctx.model.extend('biliuntag_tenant', {
         id: 'unsigned',
         keyword: 'string',
         target: 'list',
     }, {
         autoInc: true
     })
+    ctx.model.extend('biliuntag_subscriber', {
+        id: 'unsigned',
+        tid: 'unsigned',
+        k_user: { type: 'string', nullable: true },
+        k_channel: { type: 'string', nullable: true },
+        platform: 'string',
+        push: 'boolean',
+        config: 'json',
+    }, {
+        autoInc: true,
+        foreign: {
+            tid: ['biliuntag_tenant', 'id'],
+            k_user: ['user', 'id'],
+            k_channel: ['channel', 'id'],
+        }
+    })
     ctx.model.extend('biliuntag_rule', {
         id: 'unsigned',
-        sid: 'unsigned',
+        tid: 'unsigned',
         type: 'integer',
         matcher: 'list',
         action: 'integer',
     }, {
         autoInc: true,
         foreign: {
-            sid: ['biliuntag_subscribe', 'id'],
+            tid: ['biliuntag_tenant', 'id'],
         }
     })
     ctx.model.extend('biliuntag_source', {
-        sid: 'unsigned',
+        tid: 'unsigned',
         avid: 'unsigned',
         source: 'integer',
         stat: 'integer',
     }, {
-        primary: ['sid', 'avid'],
+        primary: ['tid', 'avid'],
+        indexes: ['avid'],
         foreign: {
-            sid: ['biliuntag_subscribe', 'id'],
+            tid: ['biliuntag_tenant', 'id'],
             avid: ['biliuntag_video', 'id'],
         }
     })

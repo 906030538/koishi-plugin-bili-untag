@@ -32,7 +32,7 @@ async function insert_video(ctx: Context, video: Video, user: User, filter: Filt
     await update_user(ctx, user)
     if (video.title === '已失效视频' && remove_cdn_domain(video.pic) === REMOVED_COVER) return
     await ctx.database.upsert('biliuntag_video', [video])
-    const s = await ctx.database.get('biliuntag_source', { sid: filter.sid, avid: video.id })
+    const s = await ctx.database.get('biliuntag_source', { tid: filter.tid, avid: video.id })
     if (s.length === 1) {
         switch (s[0].stat) {
             case SubVideoStat.Accept:
@@ -45,7 +45,7 @@ async function insert_video(ctx: Context, video: Video, user: User, filter: Filt
     }
     // TODO: add fav, create fav
     await ctx.database.upsert('biliuntag_source', [{
-        sid: filter.sid,
+        tid: filter.tid,
         avid: video.id,
         source,
         stat
@@ -85,7 +85,7 @@ async function spider_work(ctx: Context, config: Config, keyword: string, filter
         await insert_video(ctx, v, u, filter)
     })
     // update last fav
-    const fav = (await ctx.database.get('biliuntag_favs', r => $.eq(r.sid, filter.sid))).pop()
+    const fav = (await ctx.database.get('biliuntag_favs', r => $.eq(r.tid, filter.tid))).pop()
     if (fav) {
         const medias = await get_favs(config, fav.mid)
         medias.forEach(async m => {
@@ -109,7 +109,7 @@ export async function re_calc(ctx: Context): Promise<string> {
         },
             r => $.and($.eq(r.v.author, r.u.id)))
             .join('s', ctx.database.select('biliuntag_source'),
-                (r, s) => $.and($.eq(s.avid, r.v.id), $.eq(s.sid, sub.id)), true)
+                (r, s) => $.and($.eq(s.avid, r.v.id), $.eq(s.tid, sub.id)), true)
             .execute()
         let s: Array<Source> = []
         for (const r of res) {
@@ -124,7 +124,7 @@ export async function re_calc(ctx: Context): Promise<string> {
             }
             if (r.s && source === r.s.source && stat === r.s.stat) continue
             console.log(r.v.id, r.v.title, source, r.u.name, stat)
-            s.push({ sid: sub.id, avid: r.v.id, source, stat })
+            s.push({ tid: sub.id, avid: r.v.id, source, stat })
         }
         count += s.length
         ctx.database.upsert('biliuntag_source', s)

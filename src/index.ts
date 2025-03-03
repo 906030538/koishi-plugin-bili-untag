@@ -3,8 +3,8 @@ import 'koishi-plugin-cron'
 import { doSearch, search2msg } from './bili_api/search'
 import { db } from './model'
 import { re_calc, spider } from './spider'
-import { subscribe } from './subscribe'
-import { rule } from './rule'
+import { tenant_command } from './tenant'
+import { rule_command } from './rule'
 import { feed_command, push } from './push'
 import { find_command } from './find'
 import { fav_commands } from './init'
@@ -22,8 +22,8 @@ export const Config: Schema<Config> = Schema.object({})
 export function apply(ctx: Context, config: Config) {
   ctx.inject(['database'], ctx => {
     db(ctx)
-    subscribe(ctx)
-    rule(ctx)
+    tenant_command(ctx)
+    rule_command(ctx)
     ctx.command('recalc').action(async _ => await re_calc(ctx))
     find_command(ctx)
     fav_commands(ctx, config)

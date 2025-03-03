@@ -9,8 +9,13 @@ export function make_msg(v: Video, u: string): string {
         v.bvid + ' | av' + v.id
 }
 
-function get_sub_video(ctx: Context, ids: number[], stat: SubVideoStat[], count?: number):
-    Promise<Array<{ v: Video, u: { name: string }, s: Source }>> {
+function get_sub_video(
+    ctx: Context,
+    ids: number[],
+    stat: SubVideoStat[],
+    count?: number,
+    desc = false,
+): Promise<Array<{ v: Video, u: { name: string }, s: Source }>> {
     let s = ctx.database
         .join({
             s: 'biliuntag_source',
@@ -25,14 +30,27 @@ function get_sub_video(ctx: Context, ids: number[], stat: SubVideoStat[], count?
             $.eq(r.s.avid, r.v.id),
             $.eq(r.v.author, r.u.id)
         ))
+    if (desc) s = s.orderBy('v.pubdate', 'desc')
     if (count) s = s.limit(count)
     return s.execute()
 }
 
-export async function feed(ctx: Context, session: Session, count = 10, wait = false) {
+export async function recent(ctx: Context, count = 10): Promise<string> {
+    const stat = [SubVideoStat.Accept, SubVideoStat.Pushed]
+    const res = await get_sub_video(ctx, [1], stat, count, true)
+    if (res.length) return res.map(r => make_msg(r.v, r.u.name)).join('\n\n')
+    return '没有更新了'
+}
+
+export async function feed(
+    ctx: Context,
+    session: Session,
+    count = 10,
+    wait = false
+): Promise<string> {
     const subs = await get_subscribes(ctx, undefined, session)
     const ids = subs.map(s => s.id)
-    if (ids.length === 0) return '找不到订阅'
+    if (ids.length === 0) return await recent(ctx, count)
     let stat = [SubVideoStat.Accept]
     if (wait) stat.push(SubVideoStat.Wait)
     let res = await get_sub_video(ctx, ids, stat, count)

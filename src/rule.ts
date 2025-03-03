@@ -6,9 +6,18 @@ export async function get_rules(ctx: Context, id: number): Promise<Array<Rule>> 
 }
 
 function rule2msg(rule: Rule): string {
-    const text = (rule.type === RuleType.Date)
-        ? new Date(Number(rule.matcher[0])).toLocaleString('zh-CN')
-        : rule.matcher.join(',')
+    if (!rule.matcher.length) return `(${rule.id}:${rule.action})`
+    let text: string = '~'
+    if (rule.type === RuleType.Date) {
+        const left = Number(rule.matcher[0])
+        if (left) text = new Date(left).toLocaleString('zh-CN') + text
+        if (rule.matcher.length > 1) {
+            const right = Number(rule.matcher[1])
+            if (right) text += new Date(right).toLocaleString('zh-CN')
+        }
+    } else {
+        text = rule.matcher.join(',')
+    }
     return `(${rule.id}:${rule.action}) ${text}`
 }
 

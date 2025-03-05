@@ -6,6 +6,7 @@ import { update_user } from './spider'
 import { Favs, SubVideoStat } from './model'
 
 async function new_fav(session: Session, tid: number, mid: number): Promise<string> {
+    if (typeof tid !== 'number' || typeof mid !== 'number') return '参数错误'
     const ret = await session.app.database.create('biliuntag_favs', {
         tid,
         mid
@@ -15,6 +16,7 @@ async function new_fav(session: Session, tid: number, mid: number): Promise<stri
 }
 
 async function del_fav(session: Session, tid: number, mid: number): Promise<string> {
+    if (typeof tid !== 'number' || typeof mid !== 'number') return '参数错误'
     const ret = await session.app.database.remove('biliuntag_favs', {
         tid,
         mid
@@ -24,6 +26,7 @@ async function del_fav(session: Session, tid: number, mid: number): Promise<stri
 }
 
 async function list_fav(session: Session, tid: number): Promise<string> {
+    if (typeof tid !== 'number') return '参数错误'
     const ret = await session.app.database.get('biliuntag_favs', r => $.eq(r.tid, tid))
     if (ret) return ret.map(f => `${f.mid}`).join('\n')
     return '找不到任何收藏夹'
@@ -37,6 +40,7 @@ async function update_fav(
     all = false
 ): Promise<string> {
     let fav: Array<Favs> = []
+    if (typeof tid !== 'number') return '参数错误'
     if (all || !mid) {
         fav = await session.app.database.get('biliuntag_favs', r => $.eq(r.tid, tid))
     } else {

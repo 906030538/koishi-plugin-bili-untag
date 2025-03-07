@@ -1,7 +1,10 @@
 {
   "name": "koishi-plugin-bili-untag",
   "description": "Subscribe Bilibili miss tagged Video",
-  "version": "0.0.1",
+  "version": "0.2.3",
+  "contributors": [
+    "Tanya <906030538@qq.com>"
+  ],
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -9,6 +12,11 @@
     "dist"
   ],
   "license": "MIT",
+  "homepage": "https://qun.qq.com/qunpro/robot/qunshare?robot_appid=102662742&robot_uin=3889570184",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/906030538/koishi-plugin-bili-untag.git"
+  },
   "keywords": [
     "chatbot",
     "koishi",
@@ -17,15 +25,23 @@
   "peerDependencies": {
     "koishi": "^4.18.7"
   },
+  "devDependencies": {
+    "@types/md5": "^2.3.5"
+  },
   "dependencies": {
-    "@types/md5": "^2.3.5",
     "koishi-plugin-cron": "^3.1.0",
     "md5": "^2.3.0"
   },
   "koishi": {
+    "description": {
+      "zh": ""
+    },
     "service": {
       "required": [
         "database"
+      ],
+      "optional": [
+        "cron"
       ]
     }
   }

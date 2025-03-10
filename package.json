@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-bili-untag",
   "description": "Subscribe Bilibili miss tagged Video",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "contributors": [
     "Tanya <906030538@qq.com>"
   ],
@@ -20,7 +20,9 @@
   "keywords": [
     "chatbot",
     "koishi",
-    "plugin"
+    "plugin",
+    "bilibili",
+    "subscribe"
   ],
   "peerDependencies": {
     "koishi": "^4.18.7"
@@ -34,7 +36,7 @@
   },
   "koishi": {
     "description": {
-      "zh": ""
+      "zh": "基于哔哩哔哩的搜索和推荐接口订阅视频"
     },
     "service": {
       "required": [

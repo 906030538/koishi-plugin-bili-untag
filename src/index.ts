@@ -38,12 +38,16 @@ export function apply(ctx: Context, config: Config) {
     feed_command(ctx)
   })
 
-  ctx.command('search <keyword:text>').action(async (_, keyword) => {
-    const res = await doSearch(config, keyword)
-    const videos = res.result
-      .filter(r => r.result_type === 'video')
-      .flatMap(r => r.data.filter(v => v.type === 'video'))
-    return search2msg(videos)
-  })
+  ctx.command('search <keyword:text>')
+    .option('count', '-n <count:number>')
+    .action(async ({ options }, keyword) => {
+      const count = options.count ?? 5
+      const res = await doSearch(config, keyword)
+      const videos = res.result
+        .filter(r => r.result_type === 'video')
+        .slice(0, count)
+        .flatMap(r => r.data.filter(v => v.type === 'video'))
+      return search2msg(videos)
+    })
 
 }

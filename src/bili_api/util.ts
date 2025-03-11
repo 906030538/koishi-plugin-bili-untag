@@ -2,6 +2,7 @@ import md5 from 'md5'
 import { Config } from './config'
 import { Random } from 'koishi'
 
+const HOME_URL = 'https://www.bilibili.com/'
 const mixinKeyEncTab: number[] = [
     46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35,
     27, 43, 5, 49, 33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13,
@@ -11,6 +12,12 @@ const mixinKeyEncTab: number[] = [
 const chrFilter: RegExp = /[!'()*]/g
 let mixin_key: string = ''
 let timestamp: number = 0
+
+const DAY_MS = 24 * 60 * 60 * 1000
+let CSRF = {
+    token: "",
+    update: new Date(0),
+}
 
 interface Nav {
     data: {
@@ -41,7 +48,7 @@ async function getWbiKeys(config: Config, force: boolean): Promise<string> {
             // SESSDATA 字段
             Cookie: 'SESSDATA=' + config.session,
             'User-Agent': config.agent,
-            Referer: 'https://www.bilibili.com/'//对于直接浏览器调用可能不适用
+            Referer: HOME_URL
         }
     })
     res.headers.get('Date')
@@ -92,6 +99,8 @@ export enum ResponseCode {
     invisible = 62002,      // 稿件不可见
     review = 62004,         // 稿件审核中
     private = 62012,        // 仅UP主自己可见
+    list_full = 90001,      // 列表已满
+    deleted = 90003,        // 稿件已经被删除
     bad_param = 2001000,    // 参数错误
     bad_param2 = 72010017,  // 参数错误
 }
@@ -112,7 +121,7 @@ export async function doRequest<T>(config: Config, url: string, param: Object): 
         // SESSDATA 字段
         Cookie: 'SESSDATA=' + config,
         'User-Agent': config.agent,
-        Referer: 'https://www.bilibili.com/' //对于直接浏览器调用可能不适用
+        Referer: HOME_URL
     }
     let res = await fetch(url + '?' + query, { headers })
     let json_res: JsonResponse<T> = await res.json()
@@ -125,7 +134,7 @@ export async function tryWbi<T>(config: Config, url: string, param: Object): Pro
         // SESSDATA 字段
         Cookie: 'SESSDATA=' + config,
         'User-Agent': config.agent,
-        Referer: 'https://www.bilibili.com/' //对于直接浏览器调用可能不适用
+        Referer: HOME_URL
     }
     let res = await fetch(url + '?' + query, { headers })
     let text = await res.text()
@@ -147,6 +156,26 @@ export async function tryWbi<T>(config: Config, url: string, param: Object): Pro
         throw json_res.message
     }
     return json_res.data
+}
+
+export async function get_csrf(config: Config): Promise<string> {
+    if (CSRF.token && (new Date().getTime() - CSRF.update.getTime() > DAY_MS)) {
+        return CSRF.token
+    }
+    const headers = {
+        // SESSDATA 字段
+        Cookie: 'SESSDATA=' + config,
+        'User-Agent': config.agent,
+        Referer: HOME_URL
+    }
+    const res = await fetch(HOME_URL, { headers })
+    CSRF.token = res.headers.getSetCookie().find(s => {
+        if (s.includes('bili_jct=')) {
+            return s.split(';').shift().split('=').pop()
+        }
+    })
+    CSRF.update = new Date()
+    return CSRF.token
 }
 
 export function remove_cdn_domain(u: string): string {

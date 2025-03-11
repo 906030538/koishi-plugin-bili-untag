@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-bili-untag",
   "description": "Subscribe Bilibili miss tagged Video",
-  "version": "0.2.4",
+  "version": "0.2.6",
   "contributors": [
     "Tanya <906030538@qq.com>"
   ],

@@ -215,10 +215,11 @@ export class Filter {
                     break
                 case RuleType.Text:
                     for (let m of rule.matcher) {
-                        if (video.title && video.title.includes(m)
-                            || video.description && video.description.includes(m)
-                            || video.tag && video.tag.includes(m)
-                            || user && user.name.includes(m)
+                        m = m.toLowerCase()
+                        if (video.title && video.title.toLowerCase().includes(m)
+                            || video.description && video.description.toLowerCase().includes(m)
+                            || video.tag && video.tag.find(t => t.toLowerCase() === m)
+                            || user && user.name.toLowerCase().includes(m)
                         ) {
                             matched = true
                             break

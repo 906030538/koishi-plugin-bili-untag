@@ -1,7 +1,7 @@
 import { Config } from './config'
-import { doRequest, get_csrf } from './util'
+import { doRequest } from './util'
 
-const DEAL_URL = 'https://api.bilibili.com/medialist/gateway/coll/resource/deal'
+const DEAL_URL = 'https://api.bilibili.com/x/v3/fav/resource/deal'
 
 interface DealRequest {
     access_key?: string,
@@ -10,6 +10,7 @@ interface DealRequest {
     add_media_ids?: string,
     del_media_ids?: string,
     csrf?: string,
+    platform?: string
 }
 
 interface DealResponse {
@@ -24,6 +25,8 @@ export async function doDeal(config: Config, avid: number, mlid: number): Promis
         rid: avid,
         type: 2,
         add_media_ids: mlid.toString(),
+        csrf: config.csrf,
+        platform: 'web',
     }
     const res: DealResponse = await doRequest(config, DEAL_URL, param)
 }
@@ -38,7 +41,7 @@ interface ToviewRequest {
 
 export async function addToView(config: Config, id: number | string): Promise<string> {
     let param: ToviewRequest = {
-        csrf: await get_csrf(config)
+        csrf: config.csrf,
     }
     switch (typeof id) {
         case 'number':

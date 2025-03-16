@@ -13,11 +13,17 @@ export const name = 'bili-untag'
 
 export interface Config {
   session?: string,
+  csrf?: string,
   agent?: string,
   push_cron?: string,
 }
 
-export const Config: Schema<Config> = Schema.object({})
+export const Config: Schema<Config> = Schema.object({
+  session: Schema.string(),
+  csrf: Schema.string(),
+  agent: Schema.string(),
+  push_cron: Schema.string(),
+})
 
 export function apply(ctx: Context, config: Config) {
   ctx.inject(['database'], ctx => {

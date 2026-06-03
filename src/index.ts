@@ -47,7 +47,7 @@ export function apply(ctx: Context, config: Config) {
   ctx.command('search <keyword:text>')
     .option('count', '-n <count:number>')
     .action(async ({ options }, keyword) => {
-      const count = options.count ?? 5
+      const count = options!.count ?? 5
       const res = await doSearch(config, keyword)
       const videos = res.result
         .filter(r => r.result_type === 'video')

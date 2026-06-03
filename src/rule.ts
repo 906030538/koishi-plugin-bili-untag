@@ -34,9 +34,9 @@ export async function rule_command(ctx: Context) {
             if (typeof tid !== 'number') return '缺少订阅id'
             if (typeof source !== 'number') return '缺少积分'
             let matcher: Array<string> = []
-            if (options.json) {
+            if (options!.json) {
                 try {
-                    matcher = JSON.parse(options.json)
+                    matcher = JSON.parse(options!.json)
                 } catch {
                     return '解析json失败'
                 }
@@ -44,7 +44,7 @@ export async function rule_command(ctx: Context) {
                 matcher = keyword.split(',')
             }
             let type = RuleType.Text
-            switch (options.type) {
+            switch (options!.type) {
                 case 'title':
                     type = RuleType.Title
                     break
@@ -94,31 +94,35 @@ export async function rule_command(ctx: Context) {
         .action(async ({ options }, rid) => {
             if (typeof rid !== 'number') return '缺少规则id'
             let update: { matcher?: Array<string>, action?: number } = {}
-            if (options.json) {
+            if (options!.json) {
                 try {
-                    update.matcher = JSON.parse(options.json)
+                    update.matcher = JSON.parse(options!.json)
                 } catch {
                     return '解析json失败'
                 }
-            } else if (options.keyword) {
-                update.matcher = options.keyword.split(',')
+            } else if (options!.keyword) {
+                update.matcher = options!.keyword.split(',')
                 const old = await ctx.database.get('biliuntag_rule', rid)
                 if (old.length != 1) return '找不到规则id'
                 if (old[0].type === RuleType.Date) {
                     if (update.matcher.length > 2) return '日期规则只允许上下界两个值'
                     update.matcher = update.matcher.map(normalize_date)
                 }
-            } else if (options.append) {
+            } else if (options!.append) {
                 const old = await ctx.database.get('biliuntag_rule', rid)
                 if (old.length != 1) return '找不到规则id'
                 update.matcher = old[0].matcher
-                if (old[0].type === RuleType.Date && update.matcher.length > 1) {
-                    return '日期规则只允许上下界两个值'
+                if (old[0].type === RuleType.Date) {
+                    if (update.matcher.length > 1) {
+                        return '日期规则只允许上下界两个值'
+                    }
+                    update.matcher.push(normalize_date(options!.append))
+                } else {
+                    update.matcher.push(options!.append)
                 }
-                update.matcher.push(normalize_date(options.append))
             }
-            if (options.source) {
-                update.action = options.source
+            if (options!.source) {
+                update.action = options!.source
             }
             const res = await ctx.database.set('biliuntag_rule', rid, update)
             if (res) {
@@ -164,7 +168,7 @@ export class Filter {
                     }
                     break
                 case RuleType.Tag:
-                    for (let tag of video.tag) {
+                    for (let tag of video.tag ?? []) {
                         if (rule.matcher.includes(tag)) {
                             matched = true
                             break
@@ -201,11 +205,11 @@ export class Filter {
                 case RuleType.Regex:
                     for (let m of rule.matcher) {
                         let r = RegExp(m)
-                        if (r.exec(video.title) || r.exec(video.description) || r.exec(user?.name)) {
+                        if (r.exec(video.title) || r.exec(video.description ?? "") || r.exec(user?.name ?? "")) {
                             matched = true
                             break
                         }
-                        for (let tag of video.tag) {
+                        for (let tag of video.tag ?? []) {
                             if (r.exec(tag)) {
                                 matched = true
                                 break

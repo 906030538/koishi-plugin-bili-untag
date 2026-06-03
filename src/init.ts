@@ -2,8 +2,9 @@ import { $, Context, Session } from 'koishi'
 import { FavListIter } from './bili_api/fav'
 import { Config } from '.'
 import { fav2Video } from './convert'
-import { update_user } from './spider'
+import { insert_video } from './spider'
 import { Favs, SubVideoStat } from './model'
+import { Filter } from './rule'
 
 async function new_fav(session: Session, tid: number, mid: number): Promise<string> {
     if (typeof tid !== 'number' || typeof mid !== 'number') return '参数错误'
@@ -50,19 +51,18 @@ async function update_fav(
     if (!fav) return '找不到任何收藏夹'
     let count = 0
     for (const f of fav) {
-        let avids = []
+        let avids: Array<number> = []
         await new FavListIter(config, f.mid).all(async m => {
             const [u, v] = fav2Video(m)
-            await update_user(session.app, u)
-            await session.app.database.upsert('biliuntag_video', [v])
+            await insert_video(session.app, v, u, new Filter(tid, []), true)
             avids.push(v.id)
             count += 1
         })
         const sources = await session.app.database.select('biliuntag_source')
             .where(r => $.and($.eq(r.tid, f.tid), $.in(r.avid, avids), $.ne(r.stat, SubVideoStat.Wait)))
-            .project('avid')
             .execute()
-        const s = avids.filter(id => !sources.includes(id))
+        const avid = sources.map(s => s.avid)
+        const s = avids.filter(id => !avid.includes(id))
             .map(id => ({ tid: f.tid, avid: id, stat: SubVideoStat.Accept }))
         await session.app.database.upsert('biliuntag_source', s)
     }
@@ -71,13 +71,13 @@ async function update_fav(
 
 export function fav_commands(ctx: Context, config: Config) {
     ctx.command('fav.new <tid:number> <mid:number>')
-        .action(async ({ session }, tid, mid) => new_fav(session, tid, mid))
+        .action(async ({ session }, tid, mid) => new_fav(session!, tid, mid))
     ctx.command('fav.remove <tid:number> <mid:number>')
-        .action(async ({ session }, tid, mid) => del_fav(session, tid, mid))
+        .action(async ({ session }, tid, mid) => del_fav(session!, tid, mid))
     ctx.command('fav.list <tid:number>')
-        .action(async ({ session }, tid) => list_fav(session, tid))
+        .action(async ({ session }, tid) => list_fav(session!, tid))
     ctx.command('fav.update <tid:number> <mid:number>').option('all', '-a <all:boolean>')
         .action(async ({ session, options }, tid, mid) =>
-            update_fav(session, config, tid, mid, options.all)
+            update_fav(session!, config, tid, mid, options!.all)
         )
 }

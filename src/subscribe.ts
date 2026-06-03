@@ -61,7 +61,7 @@ async function update_subscribe(
     const subs = await s.join('s', ss, (t, s) => $.and($.eq(t.id, s.tid)), true)
         .groupBy('id', { id: 's.id', tid: 'id', keyword: 'keyword' })
         .execute()
-    let sub: { id: number, tid: number, keyword: string }
+    let sub: { id: number, tid: number, keyword: string } | undefined;
     if (subs.length > 1) {
         session.send('请选择要订阅的id:\n' + subs.map(s => `(${s.tid}) ${s.keyword}`).join('\n'))
         const id = Number(await session.prompt())
@@ -84,6 +84,7 @@ async function update_subscribe(
         if (res.removed) return `退订成功: (${sub.id}) ${sub.keyword}`
         return `退订失败`
     }
+    return `unknown`
 }
 
 export async function subscribe_command(ctx: Context) {
@@ -91,7 +92,7 @@ export async function subscribe_command(ctx: Context) {
         .option('all', '-a')
         .action(async ({ session, options }, key) => {
             let subs: Array<Tenant>
-            if (options.all) {
+            if (options!.all) {
                 subs = await get_subscribes(ctx, key)
             } else {
                 subs = await get_subscribes(ctx, key, session)
@@ -101,9 +102,9 @@ export async function subscribe_command(ctx: Context) {
         })
     ctx.command('subscribe.add [key:text]')
         .option('tid', '-t <tid:number>')
-        .action(({ session, options }, key) => update_subscribe(session, options.tid ?? key, true))
+        .action(({ session, options }, key) => update_subscribe(session!, options!.tid ?? key, true))
     ctx.command('subscribe.cancel [key:text]')
         .option('tid', '-t <tid:number>')
         .action(({ session, options }, key) =>
-            update_subscribe(session, options.tid ?? key, false))
+            update_subscribe(session!, options!.tid ?? key, false))
 }

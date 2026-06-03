@@ -41,7 +41,7 @@ async function getWbiKeys(config: Config, force: boolean): Promise<string> {
         headers: {
             // SESSDATA 字段
             Cookie: 'SESSDATA=' + config.session,
-            'User-Agent': config.agent,
+            'User-Agent': config.agent ?? "",
             Referer: HOME_URL
         }
     })
@@ -114,7 +114,7 @@ export async function doRequest<T>(config: Config, url: string, param: Object): 
     const headers = {
         // SESSDATA 字段
         Cookie: 'SESSDATA=' + config,
-        'User-Agent': config.agent,
+        'User-Agent': config.agent ?? "",
         Referer: HOME_URL
     }
     let res = await fetch(url + '?' + query, { headers })
@@ -127,7 +127,7 @@ export async function tryWbi<T>(config: Config, url: string, param: Object): Pro
     const headers = {
         // SESSDATA 字段
         Cookie: 'SESSDATA=' + config,
-        'User-Agent': config.agent,
+        'User-Agent': config.agent ?? "",
         Referer: HOME_URL
     }
     let res = await fetch(url + '?' + query, { headers })

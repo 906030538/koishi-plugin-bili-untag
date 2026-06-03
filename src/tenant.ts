@@ -14,7 +14,7 @@ async function new_tenant(session: Session, keyword: string): Promise<string> {
 async function del_tenant(ctx: Context, tid: number): Promise<string> {
     if (typeof tid !== 'number') return '缺少租户id'
     const sub = await ctx.database.remove('biliuntag_tenant', tid)
-    if (sub.removed > 0) {
+    if (sub.removed! > 0) {
         return `注销租户成功: ${tid}`
     } else {
         return `注销租户失败: ${tid}`
@@ -38,7 +38,8 @@ async function update_tenant(
         update.target = options.keyword.split(',')
     } else if (options.append) {
         const old = await ctx.database.get('biliuntag_tenant', tid)
-        if (old.length != 1) return '找不到规则id'
+        if (old.length != 1) return '找不到租户id'
+        update.target = old[0].target
         update.target.push(options.append)
     }
 
@@ -60,12 +61,12 @@ export function get_subscribes(ctx: Context, keyword?: string):
 
 export async function tenant_command(ctx: Context) {
     ctx.command('tenant.new <keyword:text>')
-        .action(({ session }, keyword) => new_tenant(session, keyword))
+        .action(({ session }, keyword) => new_tenant(session!, keyword))
     ctx.command('tenant.remove <tid:number>').action((_, tid) => del_tenant(ctx, tid))
     ctx.command('tenant.update <tid:number>')
         .option('json', '-j <json:text>')
         .option('keyword', '-k <keyword:text>')
         .option('append', '-a <append:text>')
-        .action(({ options }, tid) => update_tenant(ctx, tid, options))
+        .action(({ options }, tid) => update_tenant(ctx, tid, options!))
     subscribe_command(ctx)
 }

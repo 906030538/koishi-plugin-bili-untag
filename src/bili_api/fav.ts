@@ -111,7 +111,7 @@ export class FavListIter implements PageFlatIter<Media> {
         while (!this.finished || this.content.length) {
             while (this.content.length) {
                 const m = this.content.shift()
-                if (m.attr === MediaAttr.Normal) return m
+                if (m!.attr === MediaAttr.Normal) return m
             }
             if (!this.finished) await this.more()
         }

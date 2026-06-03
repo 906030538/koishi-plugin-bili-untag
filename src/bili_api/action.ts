@@ -41,7 +41,7 @@ interface ToviewRequest {
 
 export async function addToView(config: Config, id: number | string): Promise<string> {
     let param: ToviewRequest = {
-        csrf: config.csrf,
+        csrf: config.csrf ?? "",
     }
     switch (typeof id) {
         case 'number':

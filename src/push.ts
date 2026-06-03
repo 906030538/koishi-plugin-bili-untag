@@ -127,15 +127,15 @@ export async function update(ctx: Context, session: Session, id: string, accept 
 export function feed_command(ctx: Context) {
     ctx.command('feed <count:number>')
         .option('wait', '-w <wait:boolean>')
-        .action(async ({ options, session }, count) => await feed(ctx, session, count, options.wait))
+        .action(async ({ options, session }, count) => await feed(ctx, session!, count, options!.wait))
     ctx.command('feed.peek')
         .option('wait', '-w <wait:boolean>')
-        .action(async ({ options, session }) => await peek(ctx, session, options.wait))
-    ctx.command('feed.reject <id>').action(async ({ session }, id) => update(ctx, session, id, false))
-    ctx.command('feed.accept <id>').action(async ({ session }, id) => update(ctx, session, id, true))
+        .action(async ({ options, session }) => await peek(ctx, session!, options!.wait))
+    ctx.command('feed.reject <id>').action(async ({ session }, id) => update(ctx, session!, id, false))
+    ctx.command('feed.accept <id>').action(async ({ session }, id) => update(ctx, session!, id, true))
     ctx.command('feed.clear')
         .option('tid', '-t <tid:number>')
-        .action(async ({ session, options }) => await clear(ctx, session, options.tid))
+        .action(async ({ session, options }) => await clear(ctx, session!, options!.tid))
 }
 
 export async function push(ctx: Context): Promise<string | void> {

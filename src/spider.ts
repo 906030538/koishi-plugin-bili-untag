@@ -24,7 +24,7 @@ export async function update_user(ctx: Context, u: User) {
 
 const REMOVED_COVER = '/bfs/archive/be27fd62c99036dce67efface486fb0a88ffed06.jpg'
 
-async function insert_video(ctx: Context, video: Video, user: User, filter: Filter, fav = false) {
+export async function insert_video(ctx: Context, video: Video, user: User, filter: Filter, fav = false) {
     const source = filter.calc(video, user)
     let stat = SubVideoStat.Wait
     if (fav || source > 100) stat = SubVideoStat.Accept

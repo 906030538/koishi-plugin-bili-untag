@@ -5,7 +5,7 @@ import { make_msg } from './push'
 export function find_command(ctx: Context) {
     ctx.command('find <keyword:text>')
         .option('count', '-n <count:number>')
-        .action(async ({ options }, keyword) => await find(ctx, keyword, options.count))
+        .action(async ({ options }, keyword) => await find(ctx, keyword, options!.count))
 }
 
 async function find(ctx: Context, keyword: string, limit = 3) {
@@ -22,7 +22,7 @@ async function find(ctx: Context, keyword: string, limit = 3) {
     for (const { v, u } of r) {
         if (v.title.toLowerCase().includes(lowerKey)
             || v.description && v.description.toLowerCase().includes(lowerKey)
-            || v.tag.find(t => t.toLowerCase() === lowerKey)
+            || (v.tag ?? []).find(t => t.toLowerCase() === lowerKey)
             || u.name.toLowerCase().includes(lowerKey)
         ) {
             found.set(v.id, [v, u.name])

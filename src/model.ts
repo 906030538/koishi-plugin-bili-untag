@@ -23,8 +23,8 @@ export interface Video {
     id: number,                 // avid
     bvid: string,               // bvid
     author: number              // Up主uid
-    pubdate: number | Date,     // 投稿时间戳
-    senddate?: number | Date,   // 发布时间戳
+    pubdate: Date,              // 投稿时间戳
+    senddate?: Date,            // 发布时间戳
     area?: number,              // 分区id
     title: string,              // 标题
     description?: string,       // 简介
@@ -103,7 +103,7 @@ export interface Favs {
 
 export function db(ctx: Context) {
     ctx.model.extend('biliuntag_user', {
-        id: 'unsigned',
+        id: 'unsigned(16)',
         time: 'timestamp',
         name: 'string',
         face: 'string',
@@ -113,9 +113,9 @@ export function db(ctx: Context) {
     })
     ctx.model.extend('biliuntag_video', {
         // 各字段的类型声明
-        id: 'unsigned',
+        id: 'unsigned(16)',
         bvid: 'string',
-        author: 'unsigned',
+        author: 'unsigned(16)',
         pubdate: 'timestamp',
         senddate: 'timestamp',
         area: { type: 'integer', nullable: true, initial: -1 },
@@ -142,7 +142,7 @@ export function db(ctx: Context) {
     })
     ctx.model.extend('biliuntag_favs', {
         tid: 'unsigned',
-        mid: 'integer',
+        mid: 'unsigned(16)',
     }, {
         primary: ['tid', 'mid'],
         foreign: {
@@ -168,7 +168,7 @@ export function db(ctx: Context) {
         autoInc: true,
         foreign: {
             tid: ['biliuntag_tenant', 'id'],
-            k_user: ['user', 'id'],
+            k_user: ['binding', 'pid'],
             k_channel: ['channel', 'id'],
         }
     })
@@ -186,7 +186,7 @@ export function db(ctx: Context) {
     })
     ctx.model.extend('biliuntag_source', {
         tid: 'unsigned',
-        avid: 'unsigned',
+        avid: 'unsigned(16)',
         source: 'integer',
         stat: 'integer',
     }, {

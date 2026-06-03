@@ -185,10 +185,10 @@ export class Filter {
                     }
                     break
                 case RuleType.Date:
-                    if (typeof video.pubdate !== 'number') break
+                    let pubdate = video.pubdate.getTime();
                     let [start, end] = rule.matcher.map(Number)
                     matched = true
-                    if (start && video.pubdate < start || end && video.pubdate >= end) {
+                    if (start && pubdate < start || end && pubdate >= end) {
                         matched = false
                         break
                     }

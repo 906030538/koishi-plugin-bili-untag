@@ -194,7 +194,7 @@ export function db(ctx: Context) {
         indexes: ['avid'],
         foreign: {
             tid: ['biliuntag_tenant', 'id'],
-            avid: ['biliuntag_video', 'id'],
+            // avid: ['biliuntag_video', 'id'],
         }
     })
 }

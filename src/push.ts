@@ -125,15 +125,17 @@ export async function update(ctx: Context, session: Session, id: string, accept 
 }
 
 export function feed_command(ctx: Context) {
-    ctx.command('feed <count:number>')
+    ctx.command('feed <count:number>').alias("更新")
         .option('wait', '-w <wait:boolean>')
         .action(async ({ options, session }, count) => await feed(ctx, session!, count, options!.wait))
-    ctx.command('feed.peek')
+    ctx.command('feed.peek').alias("peek")
         .option('wait', '-w <wait:boolean>')
         .action(async ({ options, session }) => await peek(ctx, session!, options!.wait))
-    ctx.command('feed.reject <id>').action(async ({ session }, id) => update(ctx, session!, id, false))
-    ctx.command('feed.accept <id>').action(async ({ session }, id) => update(ctx, session!, id, true))
-    ctx.command('feed.clear')
+    ctx.command('feed.reject <id>').alias("不收录")
+        .action(async ({ session }, id) => update(ctx, session!, id, false))
+    ctx.command('feed.accept <id>').alias("收录")
+        .action(async ({ session }, id) => update(ctx, session!, id, true))
+    ctx.command('feed.clear').alias("清空")
         .option('tid', '-t <tid:number>')
         .action(async ({ session, options }) => await clear(ctx, session!, options!.tid))
 }

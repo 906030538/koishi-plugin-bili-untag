@@ -33,7 +33,7 @@ export function apply(ctx: Context, config: Config) {
     ctx.command('recalc').action(async _ => await re_calc(ctx))
     find_command(ctx)
     fav_commands(ctx, config)
-    ctx.command('spider').action(() => spider(ctx, config))
+    ctx.command('spider').alias("爬").action(() => spider(ctx, config))
     ctx.command('push').action(() => push(ctx))
   })
   ctx.inject(['cron', 'database'], ctx => {
@@ -44,7 +44,7 @@ export function apply(ctx: Context, config: Config) {
     feed_command(ctx)
   })
 
-  ctx.command('search <keyword:text>')
+  ctx.command('search <keyword:text>').alias("搜索")
     .option('count', '-n <count:number>')
     .action(async ({ options }, keyword) => {
       const count = options!.count ?? 5

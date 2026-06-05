@@ -3,7 +3,7 @@ import { Video, SubVideoStat } from './model'
 import { make_msg } from './push'
 
 export function find_command(ctx: Context) {
-    ctx.command('find <keyword:text>')
+    ctx.command('find <keyword:text>').alias("查找")
         .option('count', '-n <count:number>')
         .action(async ({ options }, keyword) => await find(ctx, keyword, options!.count))
 }

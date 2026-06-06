@@ -5,7 +5,7 @@ import { db } from './model'
 import { re_calc, spider } from './spider'
 import { tenant_command } from './tenant'
 import { rule_command } from './rule'
-import { feed_command, push } from './push'
+import { feed_command, weekly } from './push'
 import { find_command } from './find'
 import { fav_commands } from './init'
 
@@ -34,12 +34,11 @@ export function apply(ctx: Context, config: Config) {
     find_command(ctx)
     fav_commands(ctx, config)
     ctx.command('spider').alias("爬").action(() => spider(ctx, config))
-    ctx.command('push').action(() => push(ctx))
   })
   ctx.inject(['cron', 'database'], ctx => {
     ctx.cron('*/10 * * * *', () => spider(ctx, config))
     if (config.push_cron) {
-      ctx.cron(config.push_cron, async () => push(ctx))
+      ctx.cron(config.push_cron, async () => weekly(ctx))
     }
     feed_command(ctx)
   })

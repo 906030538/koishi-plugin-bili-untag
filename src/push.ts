@@ -54,16 +54,14 @@ export async function feed(
     let stat = [SubVideoStat.Accept]
     if (wait) stat.push(SubVideoStat.Wait)
     let res = await get_sub_video(ctx, ids, stat, count)
+    if (!res) return '没有更新了'
     const msg = res.map(r => make_msg(r.v, r.u.name)).join('\n\n')
-    if (msg) {
-        ctx.database.upsert('biliuntag_source', res.map(r => ({
-            tid: r.s.tid,
-            avid: r.s.avid,
-            stat: SubVideoStat.Pushed
-        })))
-        return msg
-    }
-    return '没有更新了'
+    ctx.database.upsert('biliuntag_source', res.map(r => ({
+        tid: r.s.tid,
+        avid: r.s.avid,
+        stat: SubVideoStat.Pushed
+    })))
+    return msg
 }
 
 export async function peek(ctx: Context, session: Session, wait = false) {
@@ -138,6 +136,13 @@ export function feed_command(ctx: Context) {
     ctx.command('feed.clear').alias("清空")
         .option('tid', '-t <tid:number>')
         .action(async ({ session, options }) => await clear(ctx, session!, options!.tid))
+    ctx.command('board')
+        .option('count', '-c <count:number>')
+        .option('days', '-d <days:number>')
+        .alias('日榜', { options: { days: 1 } })
+        .alias('周榜', { options: { days: 7 } })
+        .alias('月榜', { options: { days: 30 } })
+        .action(async ({ options, session }) => await board(ctx, session!, options!.days, options!.count))
 }
 
 export async function push(ctx: Context): Promise<string | void> {
@@ -147,25 +152,116 @@ export async function push(ctx: Context): Promise<string | void> {
     let anymsg = false
     for (const tenant of tenants) {
         const res = await get_sub_video(ctx, [tenant.t.id], [SubVideoStat.Accept], 10)
-        if (res) {
-            let pushd = false
-            for (const sub of tenant.sub) {
-                const bot = ctx.bots.find(b => b.platform === sub.platform)
-                if (!bot) continue
-                const msg = res.map(r => make_msg(r.v, r.u.name)).join('\n\n')
-                if (sub.k_channel) bot.sendMessage(sub.k_channel, msg)
-                else if (sub.k_user) bot.sendPrivateMessage(sub.k_user, msg)
-                else continue
-                pushd = true
-            }
-            if (!pushd) continue
-            ctx.database.upsert('biliuntag_source', res.map(r => ({
-                tid: r.s.tid,
-                avid: r.s.avid,
-                stat: SubVideoStat.Pushed
-            })))
-            anymsg = true
+        if (!res) continue
+        let pushd = false
+        for (const sub of tenant.sub) {
+            const bot = ctx.bots.find(b => b.platform === sub.platform)
+            if (!bot) continue
+            const msg = res.map(r => make_msg(r.v, r.u.name)).join('\n\n')
+            if (sub.k_channel) bot.sendMessage(sub.k_channel, msg)
+            else if (sub.k_user) bot.sendPrivateMessage(sub.k_user, msg)
+            else continue
+            pushd = true
         }
+        if (!pushd) continue
+        ctx.database.upsert('biliuntag_source', res.map(r => ({
+            tid: r.s.tid,
+            avid: r.s.avid,
+            stat: SubVideoStat.Pushed
+        })))
+        anymsg = true
+    }
+    if (anymsg) return '推送完毕'
+    return '没有更新'
+}
+
+function get_board(
+    ctx: Context,
+    ids: number[],
+    days: number,
+    count: number,
+): Promise<Array<{ v: Video, u: { name: string }, s: Source }>> {
+    let s = ctx.database
+        .join({
+            s: 'biliuntag_source',
+            v: 'biliuntag_video',
+            u: ctx.database
+                .select('biliuntag_user')
+                .orderBy('time', 'desc')
+                .groupBy('id', { name: 'name' })
+        }, r => $.and(
+            $.in(r.s.tid, ids),
+            $.in(r.s.stat, [SubVideoStat.Accept, SubVideoStat.Pushed]),
+            $.eq(r.s.avid, r.v.id),
+            $.eq(r.v.author, r.u.id),
+        ))
+    if (days >= 0) {
+        let start = new Date();
+        start.setHours(0, 0, 0, 0)
+        start.setDate(start.getDate() - days)
+        s = s.where(r => $.gt(r.v.pubdate, start))
+    }
+    return s.orderBy('v.favorite', 'desc')
+        .orderBy('v.view', 'desc')
+        .limit(count)
+        .execute()
+}
+
+export function make_board_msg(i: number, v: Video, u: string): string {
+    return i + '. ' + v.bvid + ' | '
+        + v.title + ' '
+        + '[' + u + '] '
+        + v.pubdate.toLocaleString('zh-CN') + ' | '
+        + 'av' + v.id
+        + ' view:' + v.view
+        + ' fav:' + v.favorite
+}
+
+export async function board(
+    ctx: Context,
+    session: Session,
+    days = 7,
+    count = 10,
+): Promise<string> {
+    const subs = await get_subscribes(ctx, undefined, session)
+    const ids = subs.map(s => s.id)
+    if (ids.length === 0) return '找不到订阅'
+    let res = await get_board(ctx, ids, days, count)
+    if (!res) return '榜上无名'
+    const msg = res.map((r, i) => make_board_msg(i, r.v, r.u.name)).join('\n')
+    ctx.database.upsert('biliuntag_source', res.map(r => ({
+        tid: r.s.tid,
+        avid: r.v.id,
+        stat: SubVideoStat.Pushed
+    })))
+    return msg
+}
+
+export async function weekly(ctx: Context): Promise<string | void> {
+    const tenants = await ctx.database.join({ t: 'biliuntag_tenant', s: 'biliuntag_subscriber' },
+        r => $.and($.eq(r.t.id, r.s.tid), $.eq(r.s.push, true))
+    ).groupBy('t.id', { sub: r => $.array(r.s) }).execute()
+    let anymsg = false
+    for (const tenant of tenants) {
+        const res = await get_board(ctx, [tenant.t.id], 7, 10)
+        if (!res) continue
+        let pushd = false
+        for (const sub of tenant.sub) {
+            const bot = ctx.bots.find(b => b.platform === sub.platform)
+            if (!bot) continue
+            const msg = res.map((r, i) => make_board_msg(i, r.v, r.u.name)).join('\n')
+            if (sub.k_channel) bot.sendMessage(sub.k_channel, msg)
+            else if (sub.k_user) bot.sendPrivateMessage(sub.k_user, msg)
+            else continue
+            pushd = true
+        }
+        if (!pushd) continue
+        ctx.database.upsert('biliuntag_source', res.map(r => ({
+            tid: r.s.tid,
+            avid: r.s.avid,
+            stat: SubVideoStat.Pushed
+        })))
+        anymsg = true
     }
     if (anymsg) return '推送完毕'
     return '没有更新'

@@ -93,17 +93,43 @@ export async function clear(ctx: Context, session: Session, tid?: number) {
     return `清理推送数： ${acc.length}`
 }
 
+function find_v(e: string | undefined): [string, number] | undefined {
+    if (!e) return
+    let av = /av(\d+)/.exec(e)?.[0]
+    let bv = /BV[0-9A-Za-z]+/.exec(e)?.[0]
+    if (av && av.length > 1) {
+        return [bv ?? av, Number(av[1])]
+    }
+    if (bv) {
+        return [bv, NaN]
+    }
+}
+
 export async function update(ctx: Context, session: Session, id: string, accept = true) {
-    if (!id) return '缺少av/BV号'
     let avid: number = NaN
-    if (!id.startsWith('BV')) {
+    let v: Video | undefined = undefined;
+    if (!id) {
+        for (var ele of session.event?._data?.d?.msg_elements) {
+            const m = find_v(ele.content)
+            if (m) {
+                [id, avid] = m
+                break
+            }
+        }
+        if (!id) return '缺少av/BV号'
+    }
+    if (!avid && !id.startsWith('BV')) {
         if (id.startsWith('av') || id.startsWith('AV')) avid = Number(id.slice(2))
         else avid = Number(id)
         if (isNaN(avid)) return '错误的av/BV号'
+    }
+    if (avid) {
+        v = (await ctx.database.get('biliuntag_video', r => $.eq(r.id, avid)))?.[0];
     } else {
-        const v = await ctx.database.get('biliuntag_video', r => $.eq(r.bvid, id))
-        if (!v.length) return '未收录，暂不支持BV'
-        avid = v[0].id
+        const r = await ctx.database.get('biliuntag_video', r => $.eq(r.bvid, id))
+        if (!r.length) return '未收录，暂不支持BV'
+        v = r[0];
+        avid = v.id
     }
     const subs = await get_subscribes(ctx, undefined, session)
     if (!subs.length) return '找不到订阅'
@@ -119,7 +145,7 @@ export async function update(ctx: Context, session: Session, id: string, accept 
         s = tid.map(s => ({ tid: s, avid, stat }))
     }
     const res = await ctx.database.upsert('biliuntag_source', s)
-    return '已完成'
+    return `${accept ? 'Accept' : 'Reject'} OK: ${v?.title}`
 }
 
 export function feed_command(ctx: Context) {

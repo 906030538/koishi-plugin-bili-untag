@@ -178,7 +178,7 @@ export class Filter {
                 case RuleType.Author:
                     if (!user) break
                     for (let m of rule.matcher) {
-                        if (user.name.includes(m)) {
+                        if (user.id == Number(m)) {
                             matched = true
                             break
                         }

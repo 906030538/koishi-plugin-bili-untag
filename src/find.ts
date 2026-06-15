@@ -1,14 +1,14 @@
-import { $, Context } from 'koishi'
+import { $, Context, Session } from 'koishi'
 import { SubVideoStat } from './model'
 import { make_table } from './push'
 
 export function find_command(ctx: Context) {
     ctx.command('find <keyword:text>').alias("查找")
         .option('count', '-n <count:number>')
-        .action(async ({ options }, keyword) => await find(ctx, keyword, options!.count))
+        .action(async ({ session, options }, keyword) => await find(ctx, session!, keyword, options!.count))
 }
 
-async function find(ctx: Context, keyword: string, limit = 3) {
+async function find(ctx: Context, session: Session, keyword: string, limit = 3) {
     if (!keyword) return '请输入关键字'
     let lowerKey = keyword.toLowerCase()
     const r = await ctx.database.join(
@@ -17,6 +17,7 @@ async function find(ctx: Context, keyword: string, limit = 3) {
         { v: false, s: true, u: false }
     )
         .where(r => $.ne(r.s.stat, SubVideoStat.Reject))
+        .orderBy('v.pubdate', 'desc')
         .execute()
     let found = []
     let count = 0;
@@ -32,5 +33,6 @@ async function find(ctx: Context, keyword: string, limit = 3) {
         }
     }
     if (!found.length) return '找不到相关投稿'
-    return make_table(found) + `\n\n共找到 ${count} 稿相关视频`
+    session.send(make_table(found))
+    return `共找到 ${count} 稿相关视频`
 }

@@ -1,6 +1,6 @@
 import { $, Context } from 'koishi'
-import { Video, SubVideoStat } from './model'
-import { make_msg } from './push'
+import { SubVideoStat } from './model'
+import { make_table } from './push'
 
 export function find_command(ctx: Context) {
     ctx.command('find <keyword:text>').alias("查找")
@@ -18,18 +18,19 @@ async function find(ctx: Context, keyword: string, limit = 3) {
     )
         .where(r => $.ne(r.s.stat, SubVideoStat.Reject))
         .execute()
-    let found: Map<number, [Video, string]> = new Map()
+    let found = []
+    let count = 0;
     for (const { v, u } of r) {
         if (v.title.toLowerCase().includes(lowerKey)
             || v.description && v.description.toLowerCase().includes(lowerKey)
             || (v.tag ?? []).find(t => t.toLowerCase() === lowerKey)
             || u.name.toLowerCase().includes(lowerKey)
         ) {
-            found.set(v.id, [v, u.name])
+            count += 1
+            if (found.length >= limit) continue
+            found.push({ v, u })
         }
-        if (found.size >= limit) break
     }
-    if (!found.size) return '找不到相关投稿'
-    const msg = Array.from(found.values())
-    return msg.map(([v, u]) => make_msg(v, u)).join('\n\n')
+    if (!found.length) return '找不到相关投稿'
+    return make_table(found) + `\n\n共找到 ${count} 稿相关视频`
 }

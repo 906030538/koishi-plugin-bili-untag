@@ -1,8 +1,26 @@
 import { $, Context, h, Session } from 'koishi'
 import { get_subscribes } from './subscribe'
-import { Source, Tenant, SubVideoStat, Video } from './model'
+import { Source, Tenant, SubVideoStat, Video, User } from './model'
 
-export function make_msg(v: Video, u: string): string {
+export function make_table(res: { v: Video, u: { name: string } }[]): h {
+    let msg = '|cover|BV|Title|Author|pubdate|view|\n|-|-|-|-|-|-|'
+    for (let r of res) {
+        msg += make_row(r.v, r.u.name)
+    }
+    return h('markdown', msg)
+}
+
+function make_row(v: Video, u: string): string {
+    let msg = '\n|![cover #160px #90px](' + v.pic + ')|'
+    msg += `[${v.bvid}](https://b23.tv/${v.bvid})|`
+    msg += v.title.replaceAll('|', '\\|') + `|`
+    msg += u.replaceAll('|', '\\|') + '|'
+    msg += v.pubdate.toLocaleString('zh-CN') + '|'
+    msg += `${v.view}|`
+    return msg
+}
+
+function make_text_msg(v: Video, u: string): string {
     return h('img', { src: v.pic }) + '\n' +
         v.pubdate.toLocaleString('zh-CN') + ' | ' + u + '\n' +
         v.title + '\n' +
@@ -35,10 +53,10 @@ function get_sub_video(
     return s.execute()
 }
 
-export async function recent(ctx: Context, count = 10): Promise<string> {
+export async function recent(ctx: Context, count = 10): Promise<string | h> {
     const stat = [SubVideoStat.Accept, SubVideoStat.Pushed]
     const res = await get_sub_video(ctx, [1], stat, count, true)
-    if (res.length) return res.map(r => make_msg(r.v, r.u.name)).join('\n\n')
+    if (res.length) return make_table(res)
     return '没有更新了'
 }
 
@@ -47,7 +65,7 @@ export async function feed(
     session: Session,
     count = 10,
     wait = false
-): Promise<string> {
+): Promise<string | h> {
     const subs = await get_subscribes(ctx, undefined, session)
     const ids = subs.map(s => s.id)
     if (ids.length === 0) return await recent(ctx, count)
@@ -55,25 +73,23 @@ export async function feed(
     if (wait) stat.push(SubVideoStat.Wait)
     let res = await get_sub_video(ctx, ids, stat, count)
     if (!res) return '没有更新了'
-    const msg = res.map(r => make_msg(r.v, r.u.name)).join('\n\n')
     ctx.database.upsert('biliuntag_source', res.map(r => ({
         tid: r.s.tid,
         avid: r.s.avid,
         stat: SubVideoStat.Pushed
     })))
-    return msg
+    return make_table(res)
 }
 
-export async function peek(ctx: Context, session: Session, wait = false) {
+export async function peek(ctx: Context, session: Session, wait = false): Promise<string | h> {
     const subs = await get_subscribes(ctx, undefined, session)
     const ids = subs.map(s => s.id)
     if (ids.length === 0) return '找不到订阅'
     let stat = [SubVideoStat.Accept, SubVideoStat.Wait]
     if (wait) stat = [SubVideoStat.Wait]
     let res = await get_sub_video(ctx, ids, stat)
-    const msg = res.map(r => make_msg(r.v, r.u.name) + ' | (' + r.s.source + ')').join('\n\n')
-    if (msg) return msg
-    return '没有更新'
+    if (!res) return '没有更新了'
+    return make_table(res)
 }
 
 export async function clear(ctx: Context, session: Session, tid?: number) {
@@ -183,7 +199,7 @@ export async function push(ctx: Context): Promise<string | void> {
         for (const sub of tenant.sub) {
             const bot = ctx.bots.find(b => b.platform === sub.platform)
             if (!bot) continue
-            const msg = res.map(r => make_msg(r.v, r.u.name)).join('\n\n')
+            const msg = make_table(res)
             if (sub.k_channel) bot.sendMessage(sub.k_channel, msg)
             else if (sub.k_user) bot.sendPrivateMessage(sub.k_user, msg)
             else continue
@@ -248,19 +264,18 @@ export async function board(
     session: Session,
     days = 7,
     count = 10,
-): Promise<string> {
+): Promise<string | h> {
     const subs = await get_subscribes(ctx, undefined, session)
     const ids = subs.map(s => s.id)
     if (ids.length === 0) return '找不到订阅'
     let res = await get_board(ctx, ids, days, count)
     if (!res) return '榜上无名'
-    const msg = res.map((r, i) => make_board_msg(i, r.v, r.u.name)).join('\n')
     ctx.database.upsert('biliuntag_source', res.map(r => ({
         tid: r.s.tid,
         avid: r.v.id,
         stat: SubVideoStat.Pushed
     })))
-    return msg
+    return make_table(res)
 }
 
 export async function weekly(ctx: Context): Promise<string | void> {
